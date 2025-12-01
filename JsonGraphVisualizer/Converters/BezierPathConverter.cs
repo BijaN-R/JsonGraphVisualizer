@@ -16,8 +16,13 @@ namespace JsonGraphVisualizer.Converters
             Point startPoint = (Point)values[0];
             Point endPoint = (Point)values[1];
 
+            int startOffset = 2;
+            int endOffset = 6;
+
             // محاسبه نقاط کنترل برای منحنی Bezier
             double controlPointOffset = Math.Abs(endPoint.X - startPoint.X) / 2;
+            Point postStartPoint = new Point(startPoint.X + startOffset, startPoint.Y);
+            Point preEndPoint = new Point(endPoint.X - endOffset, endPoint.Y);
 
             Point controlPoint1 = new Point(startPoint.X + controlPointOffset, startPoint.Y);
             Point controlPoint2 = new Point(endPoint.X - controlPointOffset, endPoint.Y);
@@ -26,14 +31,13 @@ namespace JsonGraphVisualizer.Converters
             PathGeometry pathGeometry = new PathGeometry();
             PathFigure pathFigure = new PathFigure { StartPoint = startPoint };
 
-            BezierSegment bezierSegment = new BezierSegment(
-                controlPoint1,
-                controlPoint2,
-                endPoint,
-                true
-            );
+            var startSegment = new LineSegment(postStartPoint, true);
+            var bezierSegment = new BezierSegment(controlPoint1, controlPoint2, preEndPoint, true);
+            var endSegment = new LineSegment(endPoint, true);
 
+            pathFigure.Segments.Add(startSegment);
             pathFigure.Segments.Add(bezierSegment);
+            pathFigure.Segments.Add(endSegment);
             pathGeometry.Figures.Add(pathFigure);
 
             return pathGeometry;

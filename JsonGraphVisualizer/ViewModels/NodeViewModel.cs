@@ -26,6 +26,8 @@ namespace JsonGraphVisualizer.ViewModels
 
         public string ExpandCollapseIcon => IsExpanded ? "−" : "+";
 
+        public List<NodeViewModel> ChildrenViewModels { get; } = new List<NodeViewModel>();
+
         public bool IsExpanded
         {
             get => _isExpanded;
@@ -72,16 +74,20 @@ namespace JsonGraphVisualizer.ViewModels
         {
             if (Model.Children == null) return;
 
-            foreach (var child in Model.Children)
+            foreach (var child in ChildrenViewModels)
             {
-                UpdateNodeVisibility(child, IsExpanded);
+                UpdateNodeVisibility(child);
             }
         }
 
-        private void UpdateNodeVisibility(JsonNodeModel node, bool visible)
+        private void UpdateNodeVisibility(NodeViewModel child)
         {
-            // این متد باید از طریق reference به ViewModel واقعی صدا زده شود
-            // در عمل این کار در UpdateEdgeVisibility در UserControl انجام می‌شود
+            child.Visibility = IsExpanded ? Visibility.Visible : Visibility.Collapsed;
+
+            // collapse باید روی تمام نسل‌ها هم اعمال شود
+            child.IsExpanded = IsExpanded;
+
+            child.UpdateChildrenVisibility();
         }
 
         private void ShowFullText(object parameter)

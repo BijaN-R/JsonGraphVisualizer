@@ -264,6 +264,7 @@ namespace JsonGraphVisualizer.Views
                         Target = nodeVM
                     };
                     edgeVMs.Add(edge);
+                    parent.ChildrenViewModels.Add(nodeVM);
                 }
 
                 // Recursive برای children
