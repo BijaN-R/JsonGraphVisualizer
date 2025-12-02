@@ -98,6 +98,7 @@
     <Compile Include="Converters\BezierPathConverter.cs" />
     <Compile Include="Converters\BooleanToVisibilityConverter.cs" />
     <Compile Include="Converters\TruncateTextConverter.cs" />
+    <Compile Include="Models\ToastType.cs" />
     <Compile Include="Services\JsonParserService.cs" />
     <Compile Include="Services\LayoutService.cs" />
     <Compile Include="ViewModels\EdgeViewModel.cs" />

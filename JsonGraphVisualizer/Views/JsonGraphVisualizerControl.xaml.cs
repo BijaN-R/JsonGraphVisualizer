@@ -1,13 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using JsonGraphVisualizer.Services;
-using JsonGraphVisualizer.ViewModels;
+using System.Windows.Media.Animation;
 using JsonGraphVisualizer.Controls;
 using JsonGraphVisualizer.Models;
+using JsonGraphVisualizer.Services;
+using JsonGraphVisualizer.ViewModels;
+using Newtonsoft.Json.Linq;
 
 namespace JsonGraphVisualizer.Views
 {
@@ -38,15 +43,15 @@ namespace JsonGraphVisualizer.Views
 
         public static readonly DependencyProperty ArrayTitleBrushProperty =
             DependencyProperty.Register("ArrayTitleBrush", typeof(Brush), typeof(JsonGraphVisualizerControl),
-                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(220, 220, 170))));
+                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(255, 185, 0))));
 
         public static readonly DependencyProperty KeyTextBrushProperty =
             DependencyProperty.Register("KeyTextBrush", typeof(Brush), typeof(JsonGraphVisualizerControl),
-                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(156, 220, 254))));
+                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(94, 185, 235))));
 
         public static readonly DependencyProperty ValueTextBrushProperty =
             DependencyProperty.Register("ValueTextBrush", typeof(Brush), typeof(JsonGraphVisualizerControl),
-                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(206, 145, 120))));
+                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(233, 150, 122))));
 
         public static readonly DependencyProperty GlobalFontFamilyProperty =
             DependencyProperty.Register("GlobalFontFamily", typeof(FontFamily), typeof(JsonGraphVisualizerControl),
@@ -379,13 +384,14 @@ namespace JsonGraphVisualizer.Views
             }
         }
 
-        private void Node_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void Title_Click(object sender, MouseButtonEventArgs e)
         {
             // فقط وقتی که Ctrl فشرده نشده (یعنی panning نباشد)
             if (Keyboard.Modifiers != ModifierKeys.Control)
             {
-                if (sender is Border border && border.DataContext is NodeViewModel nodeVM)
+                if (sender is FrameworkElement fe && fe.DataContext is NodeViewModel nodeVM)
                 {
+                    e.Handled = true;
                     // نمایش Modal با JSON کامل این node
                     var modal = new JsonModal(nodeVM.Title, nodeVM.Model.RawData);
                     modal.Owner = Window.GetWindow(this);
@@ -394,6 +400,117 @@ namespace JsonGraphVisualizer.Views
                     e.Handled = true;
                 }
             }
+        }
+
+        private void Value_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement fe)
+            {
+                e.Handled = true;
+
+                string raw = null;
+
+                // حالت Property (KV)
+                if (fe.DataContext is KeyValuePair<string, object> kvp)
+                    raw = kvp.Value?.ToString() ?? "null";
+
+                // حالت Node Primitive
+                if (fe.DataContext is NodeViewModel vm)
+                    raw = vm.Model.RawData?.ToString() ?? "null";
+
+                if (raw == null) 
+                    return;
+                
+                string normalizedRaw = Regex.Replace(raw, @"\s*\r?\n\s*", " ").Trim();
+                Clipboard.SetText(normalizedRaw);
+                ShowToast($"'%{Truncate(normalizedRaw)}%' copied to clipboard", ToastType.Success);
+            }
+        }
+
+        private async void ShowToast(string text, ToastType type = ToastType.Info, int durationMs = 2000)
+        {
+            ToastText.Inlines.Clear();
+            ToastHost.Background = new SolidColorBrush(GetToastColor(type));
+
+            text = Truncate(text, 250);
+            // Regex: متن بین دو % را می‌گیرد
+            var parts = Regex.Split(text, "(%[^%]+%)");
+
+            foreach (var part in parts)
+            {
+                if (string.IsNullOrEmpty(part))
+                    continue;
+
+                if (part.StartsWith("%") && part.EndsWith("%"))
+                {
+                    // حذف درصدها
+                    string highlighted = part.Substring(1, part.Length - 2);
+
+                    ToastText.Inlines.Add(new Run(highlighted)
+                    {
+                        Foreground = new SolidColorBrush(Color.FromRgb(255, 215, 0)),
+                        FontWeight = FontWeights.Bold
+                    });
+                }
+                else
+                {
+                    ToastText.Inlines.Add(new Run(part)
+                    {
+                        Foreground = Brushes.White
+                    });
+                }
+            }
+
+            ToastHost.Visibility = Visibility.Visible;
+
+            // Fade In
+            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(250));
+            ToastHost.BeginAnimation(OpacityProperty, fadeIn);
+
+            // Wait duration
+            await Task.Delay(durationMs);
+
+            // Fade Out
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(300));
+            fadeOut.Completed += (s, e) =>
+            {
+                ToastHost.Visibility = Visibility.Collapsed;
+            };
+            ToastHost.BeginAnimation(OpacityProperty, fadeOut);
+        }
+
+        private Color GetToastColor(ToastType type)
+        {
+            switch (type)
+            {
+                case ToastType.Success:
+                    return Color.FromRgb(0, 110, 0); // سبز
+
+                case ToastType.Info:
+                    return Color.FromRgb(0, 90, 160); // آبی
+
+                case ToastType.Warning:
+                    return Color.FromRgb(180, 100, 0); // نارنجی
+
+                case ToastType.Error:
+                    return Color.FromRgb(160, 30, 30); // قرمز تیره
+
+                case ToastType.Default:
+                    return Color.FromRgb(50, 50, 50); // قرمز تیره
+
+                default:
+                    return Color.FromRgb(70, 70, 70); // حالت default خاکستری
+            }
+        }
+
+        private string Truncate(string text, int max = 80)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            return text.Length > max
+                ? text.Substring(0, max) + "..."
+                : text;
         }
 
         private void UpdateEdgeVisibility()

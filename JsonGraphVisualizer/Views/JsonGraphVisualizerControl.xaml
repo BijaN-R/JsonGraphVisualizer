@@ -120,8 +120,7 @@
                                         Width="{Binding Width}"
                                         MinHeight="{Binding Height}"
                                         Visibility="{Binding Visibility}"
-                                        Cursor="Hand"
-                                        MouseLeftButtonDown="Node_MouseLeftButtonDown">
+                                        Cursor="Hand">
 
                                     <Border.Effect>
                                         <DropShadowEffect Color="Black" 
@@ -149,12 +148,14 @@
 
                                             <!-- Title -->
                                             <TextBlock Grid.Column="1"
-                                                      Text="{Binding Title}"
-                                                      FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
-                                                      FontSize="14"
-                                                      FontWeight="Bold"
-                                                      TextWrapping="Wrap"
-                                                      VerticalAlignment="Center">
+                                                       Text="{Binding Title}"
+                                                       FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
+                                                       FontSize="14"
+                                                       FontWeight="Bold"
+                                                       TextWrapping="Wrap"
+                                                       VerticalAlignment="Center"
+                                                       Cursor="Hand"
+                                                       MouseLeftButtonDown="Title_Click">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Style.Triggers>
@@ -196,10 +197,11 @@
                                                                   Margin="0,0,5,0"/>
 
                                                         <TextBlock Grid.Column="1"
-                                                                  Foreground="{Binding ValueTextBrush, ElementName=RootControl}"
-                                                                  FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
-                                                                  FontSize="11"
-                                                                  TextWrapping="Wrap">
+                                                                   Foreground="{Binding ValueTextBrush, ElementName=RootControl}"
+                                                                   FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
+                                                                   FontSize="11"
+                                                                   TextWrapping="Wrap"
+                                                                   MouseLeftButtonDown="Value_Click">
                                                             <TextBlock.Text>
                                                                 <Binding Path="Value" Converter="{StaticResource TruncateTextConverter}"/>
                                                             </TextBlock.Text>
@@ -231,6 +233,19 @@
                     </ItemsControl>
                 </Canvas>
             </ScrollViewer>
+        </Border>
+        <Border x:Name="ToastHost"
+            Background="#333"
+            CornerRadius="6"
+            Padding="10"
+            Opacity="0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Top"
+            Margin="0,20,0,0"
+            Visibility="Collapsed">
+            <TextBlock x:Name="ToastText"
+                   FontSize="14"
+                   TextWrapping="Wrap"/>
         </Border>
     </Grid>
 </UserControl>
