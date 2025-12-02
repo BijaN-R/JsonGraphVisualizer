@@ -496,7 +496,7 @@ namespace JsonGraphVisualizer.Views
                     return Color.FromRgb(160, 30, 30); // قرمز تیره
 
                 case ToastType.Default:
-                    return Color.FromRgb(50, 50, 50); // قرمز تیره
+                    return Color.FromRgb(50, 50, 50); // خاکستری
 
                 default:
                     return Color.FromRgb(70, 70, 70); // حالت default خاکستری
