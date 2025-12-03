@@ -13,11 +13,13 @@ namespace JsonGraphVisualizer.Converters
             if (values.Length < 2 || values[0] == DependencyProperty.UnsetValue || values[1] == DependencyProperty.UnsetValue)
                 return null;
 
+            int startOffset = 2;
+            int endOffset = 6;
+
             Point startPoint = (Point)values[0];
             Point endPoint = (Point)values[1];
 
-            int startOffset = 2;
-            int endOffset = 6;
+            endPoint = new Point(endPoint.X - endOffset / 2, endPoint.Y);
 
             // محاسبه نقاط کنترل برای منحنی Bezier
             double controlPointOffset = Math.Abs(endPoint.X - startPoint.X) / 2;

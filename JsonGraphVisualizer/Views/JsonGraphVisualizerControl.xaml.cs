@@ -73,7 +73,7 @@ namespace JsonGraphVisualizer.Views
         // 🔍 Zoom و Pan محدودیت‌ها
         public static readonly DependencyProperty MinZoomProperty =
             DependencyProperty.Register("MinZoom", typeof(double), typeof(JsonGraphVisualizerControl),
-                new PropertyMetadata(0.2));
+                new PropertyMetadata(0.4));
 
         public static readonly DependencyProperty MaxZoomProperty =
             DependencyProperty.Register("MaxZoom", typeof(double), typeof(JsonGraphVisualizerControl),
@@ -286,44 +286,52 @@ namespace JsonGraphVisualizer.Views
 
         private void MainScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            if (Keyboard.Modifiers == ModifierKeys.Control)
-            {
                 e.Handled = true;
 
                 double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
-                double newScale = ScaleTransform.ScaleX * zoomFactor;
 
-                // محدود کردن zoom
-                newScale = Math.Max(MinZoom, Math.Min(MaxZoom, newScale));
+                if (ScaleTransform.ScaleX * zoomFactor > MaxZoom ||
+                    ScaleTransform.ScaleX * zoomFactor < MinZoom)
+                {
+                    return;
+                }
 
-                // نقطه مرکز zoom
+
+                // 1. موقعیت ماوس نسبت به CANVAS
                 Point mousePos = e.GetPosition(MainCanvas);
 
-                ScaleTransform.ScaleX = newScale;
-                ScaleTransform.ScaleY = newScale;
+                // 2. scale قدیمی
+                Point before = e.GetPosition(MainCanvas);
 
-                // تنظیم translate برای zoom از نقطه موس
-                double offsetX = mousePos.X * (1 - zoomFactor);
-                double offsetY = mousePos.Y * (1 - zoomFactor);
+                ScaleTransform.CenterX = mousePos.X;
+                ScaleTransform.CenterY = mousePos.Y;
+                // 3. scale جدید
+                ScaleTransform.ScaleX *= zoomFactor;
+                ScaleTransform.ScaleY *= zoomFactor;
 
-                TranslateTransform.X += offsetX;
-                TranslateTransform.Y += offsetY;
+                Point after = e.GetPosition(MainCanvas);
+
+                TranslateTransform.X += (after.X - before.X);
+                TranslateTransform.Y += (after.Y - before.Y);
+
 
                 ClampPan();
-            }
         }
 
         private void MainScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (Keyboard.Modifiers == ModifierKeys.Control)
-            {
-                _isPanning = true;
+            if (e.OriginalSource is Button ||
+                e.OriginalSource is TextBlock ||
+                e.OriginalSource is Run ||
+                e.OriginalSource is Border b && b.Name == "ToastHost")
+                return;
+
+            _isPanning = true;
                 _lastMousePosition = e.GetPosition(MainScrollViewer);
                 _originalTranslate = new Point(TranslateTransform.X, TranslateTransform.Y);
                 MainScrollViewer.Cursor = Cursors.Hand;
                 MainScrollViewer.CaptureMouse();
                 e.Handled = true;
-            }
         }
 
         private void MainScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -336,7 +344,7 @@ namespace JsonGraphVisualizer.Views
                 TranslateTransform.X = _originalTranslate.X + delta.X;
                 TranslateTransform.Y = _originalTranslate.Y + delta.Y;
 
-                ClampPan();
+                //ClampPan();
                 e.Handled = true;
             }
         }
@@ -386,7 +394,6 @@ namespace JsonGraphVisualizer.Views
 
         private void Title_Click(object sender, MouseButtonEventArgs e)
         {
-            // فقط وقتی که Ctrl فشرده نشده (یعنی panning نباشد)
             if (Keyboard.Modifiers != ModifierKeys.Control)
             {
                 if (sender is FrameworkElement fe && fe.DataContext is NodeViewModel nodeVM)
@@ -425,6 +432,11 @@ namespace JsonGraphVisualizer.Views
                 Clipboard.SetText(normalizedRaw);
                 ShowToast($"'%{Truncate(normalizedRaw)}%' copied to clipboard", ToastType.Success);
             }
+        }
+
+        private void ResetViewButton_Click(object sender, RoutedEventArgs e)
+        {
+            ResetViewTransform();
         }
 
         private async void ShowToast(string text, ToastType type = ToastType.Info, int durationMs = 2000)

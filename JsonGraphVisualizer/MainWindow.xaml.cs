@@ -40,6 +40,7 @@ namespace JsonGraphVisualizer
 
         private void LoadJson_Click(object sender, RoutedEventArgs e)
         {
+            RootControl.JsonData = null;
             RootControl.JsonData = JsonInput.Text;
         }
     }

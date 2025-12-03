@@ -48,106 +48,109 @@
             <ScrollViewer x:Name="MainScrollViewer"
                          HorizontalScrollBarVisibility="Auto"
                          VerticalScrollBarVisibility="Auto"
+                         CanContentScroll="False"
                          PreviewMouseWheel="MainScrollViewer_PreviewMouseWheel"
                          PreviewMouseLeftButtonDown="MainScrollViewer_PreviewMouseLeftButtonDown"
                          PreviewMouseLeftButtonUp="MainScrollViewer_PreviewMouseLeftButtonUp"
                          PreviewMouseMove="MainScrollViewer_PreviewMouseMove">
+                <Grid x:Name="ZoomContainer">
+                    <Grid.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="ScaleTransform"/>
+                            <TranslateTransform x:Name="TranslateTransform"/>
+                        </TransformGroup>
+                    </Grid.RenderTransform>
 
-                <Canvas x:Name="MainCanvas"
+                    <Canvas x:Name="MainCanvas"
                         Background="Transparent"
-                        Width="5000"
-                        Height="5000"
+                        Width="Auto"
+                        Height="Auto"
                         RenderTransformOrigin="0.5,0.5">
 
-                    <Canvas.RenderTransform>
-                        <TransformGroup>
-                            <ScaleTransform x:Name="ScaleTransform" ScaleX="1" ScaleY="1"/>
-                            <TranslateTransform x:Name="TranslateTransform" X="0" Y="0"/>
-                        </TransformGroup>
-                    </Canvas.RenderTransform>
 
-                    <!-- لایه Edge ها (پشت Node ها) -->
-                    <ItemsControl ItemsSource="{Binding Edges}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <Canvas/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                        <!-- لایه Edge ها (پشت Node ها) -->
+                        <ItemsControl ItemsSource="{Binding Edges}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
 
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Canvas Visibility="{Binding Visibility}">
-                                    <!-- خط منحنی -->
-                                    <Path Stroke="{Binding EdgeBrush, ElementName=RootControl}"
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Canvas Visibility="{Binding Visibility}">
+                                        <!-- خط منحنی -->
+                                        <Path Stroke="{Binding EdgeBrush, ElementName=RootControl}"
                                           StrokeThickness="2">
-                                        <Path.Data>
-                                            <MultiBinding Converter="{StaticResource BezierPathConverter}">
-                                                <Binding Path="StartPoint"/>
-                                                <Binding Path="EndPoint"/>
-                                            </MultiBinding>
-                                        </Path.Data>
-                                    </Path>
+                                            <Path.Data>
+                                                <MultiBinding Converter="{StaticResource BezierPathConverter}">
+                                                    <Binding Path="StartPoint"/>
+                                                    <Binding Path="EndPoint"/>
+                                                </MultiBinding>
+                                            </Path.Data>
+                                        </Path>
 
-                                    <!-- فلش -->
-                                    <Path Fill="{Binding EdgeBrush, ElementName=RootControl}"
+                                        <!-- فلش -->
+                                        <Path Fill="{Binding EdgeBrush, ElementName=RootControl}"
                                           Data="{Binding EndPoint, Converter={StaticResource ArrowPathConverter}}"/>
-                                </Canvas>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                                    </Canvas>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                    <!-- لایه Node ها -->
-                    <ItemsControl ItemsSource="{Binding Nodes}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <Canvas/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
+                        <!-- لایه Node ها -->
+                        <ItemsControl ItemsSource="{Binding Nodes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <Canvas/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
 
-                        <ItemsControl.ItemContainerStyle>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
-                            </Style>
-                        </ItemsControl.ItemContainerStyle>
+                            <ItemsControl.ItemContainerStyle>
+                                <Style TargetType="ContentPresenter">
+                                    <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                    <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                </Style>
+                            </ItemsControl.ItemContainerStyle>
 
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="{Binding NodeBackground, ElementName=RootControl}"
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{Binding NodeBackground, ElementName=RootControl}"
                                         BorderBrush="{Binding NodeBorderBrush, ElementName=RootControl}"
                                         BorderThickness="2"
                                         CornerRadius="5"
                                         Width="{Binding Width}"
                                         MinHeight="{Binding Height}"
                                         Visibility="{Binding Visibility}"
+                                        Tag="Node"
                                         Cursor="Hand">
 
-                                    <Border.Effect>
-                                        <DropShadowEffect Color="Black" 
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="Black" 
                                                          Direction="315" 
                                                          ShadowDepth="3" 
                                                          BlurRadius="8" 
                                                          Opacity="0.5"/>
-                                    </Border.Effect>
+                                        </Border.Effect>
 
-                                    <StackPanel Margin="10">
-                                        <!-- Header -->
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
+                                        <StackPanel Margin="10">
+                                            <!-- Header -->
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
 
-                                            <!-- Expand/Collapse Button -->
-                                            <Button Grid.Column="0"
+                                                <!-- Expand/Collapse Button -->
+                                                <Button Grid.Column="0"
                                                    Content="{Binding ExpandCollapseIcon}"
                                                    Style="{StaticResource ExpandButtonStyle}"
                                                    Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisConverter}}"
                                                    Click="ExpandCollapseButton_Click"
                                                    Margin="0,0,5,0"/>
 
-                                            <!-- Title -->
-                                            <TextBlock Grid.Column="1"
+                                                <!-- Title -->
+                                                <TextBlock Grid.Column="1"
                                                        Text="{Binding Title}"
                                                        FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                        FontSize="14"
@@ -156,84 +159,102 @@
                                                        VerticalAlignment="Center"
                                                        Cursor="Hand"
                                                        MouseLeftButtonDown="Title_Click">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Type}" Value="Object">
-                                                                <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Type}" Value="Array">
-                                                                <Setter Property="Foreground" Value="{Binding ArrayTitleBrush, ElementName=RootControl}"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Type}" Value="PropertyGroup">
-                                                                <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </Grid>
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Object">
+                                                                    <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="Array">
+                                                                    <Setter Property="Foreground" Value="{Binding ArrayTitleBrush, ElementName=RootControl}"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Type}" Value="PropertyGroup">
+                                                                    <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
 
-                                        <!-- Separator -->
-                                        <Border Height="1"
+                                            <!-- Separator -->
+                                            <Border Height="1"
                                                Background="#3E3E42"
                                                Margin="0,0,0,8"/>
 
-                                        <!-- Properties -->
-                                        <ItemsControl ItemsSource="{Binding Properties}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Grid Margin="0,2">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="Auto"/>
-                                                            <ColumnDefinition Width="*"/>
-                                                        </Grid.ColumnDefinitions>
+                                            <!-- Properties -->
+                                            <ItemsControl ItemsSource="{Binding Properties}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,2">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
 
-                                                        <TextBlock Grid.Column="0"
+                                                            <TextBlock Grid.Column="0"
                                                                   Text="{Binding Key, StringFormat='{}{0}:'}"
                                                                   Foreground="{Binding KeyTextBrush, ElementName=RootControl}"
                                                                   FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                                   FontSize="11"
                                                                   Margin="0,0,5,0"/>
 
-                                                        <TextBlock Grid.Column="1"
+                                                            <TextBlock Grid.Column="1"
                                                                    Foreground="{Binding ValueTextBrush, ElementName=RootControl}"
                                                                    FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                                    FontSize="11"
                                                                    TextWrapping="Wrap"
                                                                    MouseLeftButtonDown="Value_Click">
-                                                            <TextBlock.Text>
-                                                                <Binding Path="Value" Converter="{StaticResource TruncateTextConverter}"/>
-                                                            </TextBlock.Text>
-                                                            <TextBlock.Style>
-                                                                <Style TargetType="TextBlock">
-                                                                    <Style.Triggers>
-                                                                        <!-- اگر متن truncate شده، دکمه ... نمایش بده -->
-                                                                        <DataTrigger Binding="{Binding Value, Converter={StaticResource TruncateTextConverter}}" Value="{x:Null}">
-                                                                            <Setter Property="Cursor" Value="Arrow"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </TextBlock.Style>
+                                                                <TextBlock.Text>
+                                                                    <Binding Path="Value" Converter="{StaticResource TruncateTextConverter}"/>
+                                                                </TextBlock.Text>
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Style.Triggers>
+                                                                            <!-- اگر متن truncate شده، دکمه ... نمایش بده -->
+                                                                            <DataTrigger Binding="{Binding Value, Converter={StaticResource TruncateTextConverter}}" Value="{x:Null}">
+                                                                                <Setter Property="Cursor" Value="Arrow"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
                                                             
                                                             <!-- Hyperlink برای متن های truncate شده -->
-                                                            <TextBlock.InputBindings>
-                                                                <MouseBinding MouseAction="LeftClick" 
+                                                                <TextBlock.InputBindings>
+                                                                    <MouseBinding MouseAction="LeftClick" 
                                                                             Command="{Binding ShowFullTextCommand}"/>
-                                                            </TextBlock.InputBindings>
-                                                        </TextBlock>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Canvas>
+                                                                </TextBlock.InputBindings>
+                                                            </TextBlock>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Canvas>
+                </Grid>
             </ScrollViewer>
         </Border>
+        <Button x:Name="ResetViewButton"
+        Content="↔" 
+        VerticalContentAlignment="Top"
+        HorizontalContentAlignment="Center"
+        Width="40" Height="35"
+        FontSize="20"
+        Background="#06f"
+        Foreground="White"
+        BorderBrush="#222"
+        Padding="0"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        Margin="20"
+        Click="ResetViewButton_Click"
+        Opacity="0.65"
+        Cursor="Hand">
+        </Button>
         <Border x:Name="ToastHost"
             Background="#333"
             CornerRadius="6"
@@ -242,6 +263,7 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Top"
             Margin="0,20,0,0"
+            Panel.ZIndex="9999"
             Visibility="Collapsed">
             <TextBlock x:Name="ToastText"
                    FontSize="14"
