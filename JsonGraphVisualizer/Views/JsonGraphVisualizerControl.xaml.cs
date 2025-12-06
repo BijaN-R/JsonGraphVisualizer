@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
@@ -23,7 +24,7 @@ namespace JsonGraphVisualizer.Views
         // 🎨 رنگ‌ها و ظاهر
         public static readonly DependencyProperty ComponentBackgroundProperty =
             DependencyProperty.Register("ComponentBackground", typeof(Brush), typeof(JsonGraphVisualizerControl),
-                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(30, 30, 30))));
+                new PropertyMetadata(new SolidColorBrush(Color.FromRgb(243, 243, 243))));
 
         public static readonly DependencyProperty NodeBackgroundProperty =
             DependencyProperty.Register("NodeBackground", typeof(Brush), typeof(JsonGraphVisualizerControl),
@@ -436,7 +437,23 @@ namespace JsonGraphVisualizer.Views
 
         private void ResetViewButton_Click(object sender, RoutedEventArgs e)
         {
-            ResetViewTransform();
+            ScaleTransform.ScaleX = 1.0;
+            ScaleTransform.ScaleY = 1.0;
+
+            var rootNode = Nodes?.FirstOrDefault();
+
+            if (rootNode != null)
+            {
+                double viewportCenterY = MainScrollViewer.ActualHeight / 2.0;
+
+                TranslateTransform.X = 0;
+                TranslateTransform.Y = 20 - rootNode.Y;
+            }
+            else
+            {
+                TranslateTransform.X = 0;
+                TranslateTransform.Y = 0;
+            }
         }
 
         private async void ShowToast(string text, ToastType type = ToastType.Info, int durationMs = 2000)

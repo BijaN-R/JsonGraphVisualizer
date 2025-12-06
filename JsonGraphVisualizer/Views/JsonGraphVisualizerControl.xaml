@@ -239,7 +239,7 @@
             </ScrollViewer>
         </Border>
         <Button x:Name="ResetViewButton"
-        Content="↔" 
+        Content="⌂" 
         VerticalContentAlignment="Top"
         HorizontalContentAlignment="Center"
         Width="40" Height="35"
