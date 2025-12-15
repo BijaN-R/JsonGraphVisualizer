@@ -41,6 +41,64 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="CompactContextMenu" TargetType="ContextMenu">
+            <Setter Property="Background" Value="#181818"/>
+            <Setter Property="BorderBrush" Value="#3E3E42"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HasDropShadow" Value="True"/>
+        </Style>
+
+        <!-- ✨ Style برای MenuItem -->
+        <Style x:Key="CompactMenuItem" TargetType="MenuItem">
+            <Setter Property="Background" Value="#181818"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="20,6"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border Name="Border"
+                        Background="{TemplateBinding Background}"
+                        BorderThickness="0"
+                        Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                      VerticalAlignment="Center"
+                                      HorizontalAlignment="Left"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#3E3E42"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#3E3E42"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="CompactSeparator" TargetType="Separator">
+            <Setter Property="Background" Value="#3E3E42"/>
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Separator">
+                        <Border Height="1" 
+                        Background="{TemplateBinding Background}"
+                        SnapsToDevicePixels="True"
+                        Margin="0"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -123,7 +181,8 @@
                                         MinHeight="{Binding Height}"
                                         Visibility="{Binding Visibility}"
                                         Tag="Node"
-                                        Cursor="Hand">
+                                        Cursor="Hand"
+                                        MouseLeftButtonDown="Node_MouseLeftButtonDown">
 
                                         <Border.Effect>
                                             <DropShadowEffect Color="Black" 
@@ -132,6 +191,14 @@
                                                          BlurRadius="8" 
                                                          Opacity="0.5"/>
                                         </Border.Effect>
+
+                                        <Border.ContextMenu>
+                                            <ContextMenu Style="{StaticResource CompactContextMenu}">
+                                                <MenuItem Header="🏠 Set as Root" 
+                                                  Click="SetAsRoot_Click"
+                                                  Style="{StaticResource CompactMenuItem}"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
 
                                         <StackPanel Margin="10">
                                             <!-- Header -->
@@ -157,8 +224,7 @@
                                                        FontWeight="Bold"
                                                        TextWrapping="Wrap"
                                                        VerticalAlignment="Center"
-                                                       Cursor="Hand"
-                                                       MouseLeftButtonDown="Title_Click">
+                                                       Cursor="Hand">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Style.Triggers>
@@ -203,8 +269,7 @@
                                                                    Foreground="{Binding ValueTextBrush, ElementName=RootControl}"
                                                                    FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                                    FontSize="11"
-                                                                   TextWrapping="Wrap"
-                                                                   MouseLeftButtonDown="Value_Click">
+                                                                   TextWrapping="Wrap">
                                                                 <TextBlock.Text>
                                                                     <Binding Path="Value" Converter="{StaticResource TruncateTextConverter}"/>
                                                                 </TextBlock.Text>
@@ -224,6 +289,17 @@
                                                                     <MouseBinding MouseAction="LeftClick" 
                                                                             Command="{Binding ShowFullTextCommand}"/>
                                                                 </TextBlock.InputBindings>
+                                                                <TextBlock.ContextMenu>
+                                                                    <ContextMenu Style="{StaticResource CompactContextMenu}">
+                                                                        <MenuItem Header="📋 Copy Value" 
+                                                                              Click="Value_Click"
+                                                                              Style="{StaticResource CompactMenuItem}"/>
+                                                                        <Separator Style="{StaticResource CompactSeparator}"/>
+                                                                        <MenuItem Header="🏠 Set as Root" 
+                                                                              Click="SetAsRoot_Click"
+                                                                              Style="{StaticResource CompactMenuItem}"/>
+                                                                    </ContextMenu>
+                                                                </TextBlock.ContextMenu>
                                                             </TextBlock>
                                                         </Grid>
                                                     </DataTemplate>

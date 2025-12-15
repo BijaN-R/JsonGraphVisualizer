@@ -5,6 +5,7 @@
         Height="500" Width="700"
         WindowStartupLocation="CenterOwner"
         Background="#1E1E1E">
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -12,46 +13,85 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" 
+        <!-- 📌 عنوان -->
+        <TextBlock Grid.Row="0"
                    x:Name="TitleText"
-                   FontSize="16"
+                   FontSize="18"
                    FontWeight="Bold"
-                   Foreground="White"
-                   Margin="0,0,0,15"/>
+                   Foreground="#4EC9B0"
+                   Margin="0,0,0,20"/>
 
-        <ScrollViewer Grid.Row="1" 
+        <!-- 📊 محتوای Property ها -->
+        <ScrollViewer Grid.Row="1"
                       VerticalScrollBarVisibility="Auto"
-                      HorizontalScrollBarVisibility="Auto">
-            <TextBox x:Name="JsonContent"
-                     IsReadOnly="True"
-                     TextWrapping="Wrap"
-                     Background="#2D2D30"
-                     Foreground="#DCDCDC"
-                     BorderThickness="0"
-                     Padding="10"
-                     FontFamily="Consolas"
-                     FontSize="12"/>
+                      HorizontalScrollBarVisibility="Auto"
+                      Background="#2D2D30"
+                      Padding="15">
+
+            <ItemsControl x:Name="PropertiesContainer">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 🔵 Key (آبی) -->
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Key, StringFormat='{}{0}:'}"
+                                       Foreground="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=KeyColor}"
+                                       FontFamily="Consolas"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,10,0"
+                                       VerticalAlignment="Top"/>
+
+                            <!-- 🟠 Value (نارنجی) -->
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding Value, Mode=OneWay}"
+                                     Foreground="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=ValueColor}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     IsReadOnly="True"
+                                     IsReadOnlyCaretVisible="True"
+                                     TextWrapping="Wrap"
+                                     FontFamily="Consolas"
+                                     FontSize="14"
+                                     VerticalAlignment="Top"
+                                     Cursor="IBeam"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
         </ScrollViewer>
 
-        <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
+        <!-- 🔘 دکمه‌ها -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right"
-                    Margin="0,15,0,0">
-            <Button Content="Copy JSON"
-                    Width="100"
-                    Height="30"
+                    Margin="0,20,0,0">
+
+            <Button Content="Copy all"
+                    Width="120"
+                    Height="35"
                     Margin="0,0,10,0"
                     Click="CopyButton_Click"
                     Background="#007ACC"
                     Foreground="White"
-                    BorderThickness="0"/>
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    FontSize="13"/>
+
             <Button Content="Close"
                     Width="80"
-                    Height="30"
+                    Height="35"
                     Click="CloseButton_Click"
                     Background="#3E3E42"
                     Foreground="White"
-                    BorderThickness="0"/>
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    FontSize="13"/>
         </StackPanel>
     </Grid>
 </Window>

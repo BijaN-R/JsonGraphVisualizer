@@ -13,6 +13,7 @@ using JsonGraphVisualizer.Controls;
 using JsonGraphVisualizer.Models;
 using JsonGraphVisualizer.Services;
 using JsonGraphVisualizer.ViewModels;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace JsonGraphVisualizer.Views
@@ -145,7 +146,13 @@ namespace JsonGraphVisualizer.Views
         public string JsonData
         {
             get => (string)GetValue(JsonDataProperty);
-            set => SetValue(JsonDataProperty, value);
+            set
+            {
+                if (string.IsNullOrEmpty(_originalJsonData))
+                    _originalJsonData = value; 
+
+                SetValue(JsonDataProperty, value);
+            }
         }
 
         public List<NodeViewModel> Nodes
@@ -187,6 +194,7 @@ namespace JsonGraphVisualizer.Views
         private Point _lastMousePosition;
         private bool _isPanning;
         private Point _originalTranslate;
+        private string _originalJsonData;
 
         #endregion
 
@@ -393,15 +401,72 @@ namespace JsonGraphVisualizer.Views
             }
         }
 
-        private void Title_Click(object sender, MouseButtonEventArgs e)
+        private void SetAsRoot_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem)
+            {
+                try
+                {
+                    // 🔍 پیدا کردن NodeViewModel از ContextMenu
+                    var contextMenu = (ContextMenu)menuItem.Parent;
+                    var placementTarget = contextMenu.PlacementTarget;
+
+                    // چون ممکنه از TextBlock یا Border باشه
+                    NodeViewModel nodeVM = null;
+
+                    if (placementTarget is FrameworkElement fe)
+                    {
+                        // پیدا کردن NodeViewModel از Visual Tree
+                        nodeVM = FindAncestorNodeViewModel(fe);
+                    }
+
+                    if (nodeVM != null)
+                    {
+                        string fullJson = JsonConvert.SerializeObject(
+                            nodeVM.Model.RawData,
+                            Formatting.Indented);
+
+                        JsonData = fullJson;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"❌ Error: {ex.Message}", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
+        private NodeViewModel FindAncestorNodeViewModel(DependencyObject element)
+        {
+            while (element != null)
+            {
+                if (element is FrameworkElement fe && fe.DataContext is NodeViewModel nodeVM)
+                {
+                    return nodeVM;
+                }
+                element = VisualTreeHelper.GetParent(element);
+            }
+            return null;
+        }
+
+        private void Node_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (Keyboard.Modifiers != ModifierKeys.Control)
             {
-                if (sender is FrameworkElement fe && fe.DataContext is NodeViewModel nodeVM)
+                if (sender is Border border && border.DataContext is NodeViewModel nodeVM)
                 {
                     e.Handled = true;
-                    // نمایش Modal با JSON کامل این node
-                    var modal = new JsonModal(nodeVM.Title, nodeVM.Model.RawData);
+
+                    // 🎯 فیلتر کردن: فقط property های بدون child
+                    var filteredData = FilterPrimitiveProperties(nodeVM.Model);
+
+                    var modal = new JsonModal(nodeVM.Title, filteredData)
+                    {
+                        KeyColor = KeyTextBrush,
+                        ValueColor = ValueTextBrush,
+                        Owner = Window.GetWindow(this)
+                    };
                     modal.Owner = Window.GetWindow(this);
                     modal.ShowDialog();
 
@@ -410,26 +475,62 @@ namespace JsonGraphVisualizer.Views
             }
         }
 
-        private void Value_Click(object sender, MouseButtonEventArgs e)
+        private object FilterPrimitiveProperties(JsonNodeModel node)
         {
-            if (sender is FrameworkElement fe)
+            // اگه خود node از نوع Primitive بود، کل RawData رو برگردون
+            if (node.Type == NodeType.Primitive)
             {
-                e.Handled = true;
+                return node.RawData;
+            }
 
-                string raw = null;
+            // اگه نه، فقط property هایی که value اونا primitive هستن رو برگردون
+            var result = new Dictionary<string, object>();
 
-                // حالت Property (KV)
-                if (fe.DataContext is KeyValuePair<string, object> kvp)
-                    raw = kvp.Value?.ToString() ?? "null";
+            foreach (var prop in node.Properties)
+            {
+                var value = prop.Value;
 
-                // حالت Node Primitive
-                if (fe.DataContext is NodeViewModel vm)
-                    raw = vm.Model.RawData?.ToString() ?? "null";
+                // چک کنیم value یه object/array پیچیده نیست
+                if (value != null &&
+                    !(value is JObject) &&
+                    !(value is JArray) &&
+                    !IsComplexType(value))
+                {
+                    result[prop.Key] = value;
+                }
+            }
 
-                if (raw == null) 
-                    return;
-                
-                string normalizedRaw = Regex.Replace(raw, @"\s*\r?\n\s*", " ").Trim();
+            return result;
+        }
+
+        private bool IsComplexType(object value)
+        {
+            if (value == null)
+                return false;
+
+            var type = value.GetType();
+
+            // اگه string، number، bool، null باشه → Primitive
+            return !(type.IsPrimitive ||
+                     type == typeof(string) ||
+                     type == typeof(decimal) ||
+                     type == typeof(DateTime));
+        }
+
+        private void Value_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem &&
+                menuItem.DataContext is KeyValuePair<string, object> kvp)
+            {
+                var contextMenu = (ContextMenu)menuItem.Parent;
+                var textBlock = (TextBlock)contextMenu.PlacementTarget;
+
+                string valueToCopy = kvp.Value?.ToString() ?? "null";
+
+                // 🧹 پاک کردن کوتیشن‌های اضافی
+                valueToCopy = valueToCopy.Trim('"');
+
+                string normalizedRaw = Regex.Replace(valueToCopy, @"\s*\r?\n\s*", " ").Trim();
                 Clipboard.SetText(normalizedRaw);
                 ShowToast($"'%{Truncate(normalizedRaw)}%' copied to clipboard", ToastType.Success);
             }
@@ -437,6 +538,8 @@ namespace JsonGraphVisualizer.Views
 
         private void ResetViewButton_Click(object sender, RoutedEventArgs e)
         {
+            JsonData = _originalJsonData;
+
             ScaleTransform.ScaleX = 1.0;
             ScaleTransform.ScaleY = 1.0;
 
