@@ -185,6 +185,19 @@ namespace JsonGraphVisualizer.Views
             set => SetValue(MaxPanOffsetProperty, value);
         }
 
+        public bool IsSearchVisible
+        {
+            get => (bool)GetValue(IsSearchVisibleProperty);
+            set => SetValue(IsSearchVisibleProperty, value);
+        }
+
+        public static readonly DependencyProperty IsSearchVisibleProperty =
+            DependencyProperty.Register(
+                nameof(IsSearchVisible),
+                typeof(bool),
+                typeof(JsonGraphVisualizerControl),
+                new PropertyMetadata(false));
+
         #endregion
 
         #region Private Fields
@@ -195,6 +208,9 @@ namespace JsonGraphVisualizer.Views
         private bool _isPanning;
         private Point _originalTranslate;
         private string _originalJsonData;
+
+        private List<NodeViewModel> _searchResults = new List<NodeViewModel>();
+        private int _currentSearchIndex = -1;
 
         #endregion
 
@@ -208,6 +224,8 @@ namespace JsonGraphVisualizer.Views
             _layoutService = new LayoutService();
 
             DataContext = this;
+
+            this.Focusable = true; 
         }
 
         #endregion
@@ -335,6 +353,7 @@ namespace JsonGraphVisualizer.Views
                 e.OriginalSource is Border b && b.Name == "ToastHost")
                 return;
 
+            this.Focus();
             _isPanning = true;
                 _lastMousePosition = e.GetPosition(MainScrollViewer);
                 _originalTranslate = new Point(TranslateTransform.X, TranslateTransform.Y);
@@ -690,6 +709,212 @@ namespace JsonGraphVisualizer.Views
             UpdateEdgeVisibility();
         }
 
+        #region Search_Box
+        // 🔎 جستجوی بازگشتی در نودها
+        private List<NodeViewModel> FindNodesWithValue(string searchTerm)
+        {
+            var results = new List<NodeViewModel>();
+            if (string.IsNullOrWhiteSpace(searchTerm) || Nodes == null)
+                return results;
+
+            searchTerm = searchTerm.ToLower();
+
+            foreach (var node in Nodes)
+            {
+                SearchNodeRecursive(node, searchTerm, results);
+            }
+
+            return results;
+        }
+
+        private void SearchNodeRecursive(NodeViewModel node, string searchTerm, List<NodeViewModel> results)
+        {
+            // جستجو در عنوان
+            if (node.Title?.ToLower().Contains(searchTerm) == true)
+            {
+                results.Add(node);
+            }
+
+            // جستجو در Properties
+            if (node.Properties != null)
+            {
+                foreach (var prop in node.Properties)
+                {
+                    string key = prop.Key?.ToLower() ?? "";
+                    string value = prop.Value?.ToString()?.ToLower() ?? "";
+
+                    if (key.Contains(searchTerm) || value.Contains(searchTerm))
+                    {
+                        if (!results.Contains(node))
+                            results.Add(node);
+                        break;
+                    }
+                }
+            }
+
+            // جستجو در Children
+            if (node.ChildrenViewModels != null)
+            {
+                foreach (var child in node.ChildrenViewModels)
+                {
+                    SearchNodeRecursive(child, searchTerm, results);
+                }
+            }
+        }
+
+        // 🎯 انتقال به نود
+        private void NavigateToNode(NodeViewModel node)
+        {
+            if (node == null) return;
+
+            // محاسبه مرکز Canvas
+            double canvasWidth = MainCanvas.ActualWidth;
+            double canvasHeight = MainCanvas.ActualHeight;
+            double viewportWidth = MainScrollViewer.ActualWidth;
+            double viewportHeight = MainScrollViewer.ActualHeight;
+
+            // محاسبه موقعیت مرکزی نود
+            double nodeCenterX = node.X + (node.Width / 2);
+            double nodeCenterY = node.Y + (node.Height / 2);
+
+            // محاسبه Translation
+            double targetX = (viewportWidth / 2) - (nodeCenterX * ScaleTransform.ScaleX);
+            double targetY = (viewportHeight / 2) - (nodeCenterY * ScaleTransform.ScaleY);
+
+            TranslateTransform.X = targetX;
+            TranslateTransform.Y = targetY;
+
+            // هایلایت کردن
+            foreach (var n in Nodes)
+            {
+                ClearSearchHighlight(n);
+            }
+            node.IsSearchMatch = true;
+        }
+
+        private void ClearSearchHighlight(NodeViewModel node)
+        {
+            node.IsSearchMatch = false;
+            if (node.ChildrenViewModels != null)
+            {
+                foreach (var child in node.ChildrenViewModels)
+                {
+                    ClearSearchHighlight(child);
+                }
+            }
+        }
+
+        #region Search_Events
+        // 📝 تغییر متن جستجو
+        private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string searchTerm = SearchTextBox.Text;
+
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                _searchResults.Clear();
+                _currentSearchIndex = -1;
+                MatchCounterText.Text = "";
+
+                // پاک کردن هایلایت‌ها
+                if (Nodes != null)
+                {
+                    foreach (var node in Nodes)
+                    {
+                        ClearSearchHighlight(node);
+                    }
+                }
+                return;
+            }
+
+            _searchResults = FindNodesWithValue(searchTerm);
+            _currentSearchIndex = _searchResults.Count > 0 ? 0 : -1;
+
+            // به‌روز کردن Counter
+            if (_searchResults.Count > 0)
+            {
+                MatchCounterText.Text = $"{_currentSearchIndex + 1}/{_searchResults.Count}";
+                NavigateToNode(_searchResults[_currentSearchIndex]);
+            }
+            else
+            {
+                MatchCounterText.Text = "0/0";
+            }
+        }
+
+        // ⏭️ نتیجه بعدی
+        private void NextMatch_Click(object sender, RoutedEventArgs e)
+        {
+            if (_searchResults.Count == 0) return;
+
+            _currentSearchIndex = (_currentSearchIndex + 1) % _searchResults.Count;
+            MatchCounterText.Text = $"{_currentSearchIndex + 1}/{_searchResults.Count}";
+            NavigateToNode(_searchResults[_currentSearchIndex]);
+        }
+
+        // ✕ پاک کردن جستجو
+        private void ClearSearch_Click(object sender, RoutedEventArgs e)
+        {
+            SearchTextBox.Text = "";
+            _searchResults.Clear();
+            _currentSearchIndex = -1;
+            MatchCounterText.Text = "";
+            IsSearchVisible = false;
+
+            if (Nodes != null)
+            {
+                foreach (var node in Nodes)
+                {
+                    ClearSearchHighlight(node);
+                }
+            }
+        }
+
+        // ⌨️ کیبورد
+        private void UserControl_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                IsSearchVisible = !IsSearchVisible;
+                if (IsSearchVisible)
+                {
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        SearchTextBox.Focus();
+                        SearchTextBox.SelectAll();
+                    }), System.Windows.Threading.DispatcherPriority.Input);
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && IsSearchVisible)
+            {
+                ClearSearch_Click(null, null);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter && IsSearchVisible)
+            {
+                NextMatch_Click(null, null);
+                e.Handled = true;
+            }
+        }
+
+        private void SearchTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                ClearSearch_Click(null, null);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                NextMatch_Click(null, null);
+                e.Handled = true;
+            }
+        }
+
+        #endregion
+
+        #endregion
         #endregion
     }
 }

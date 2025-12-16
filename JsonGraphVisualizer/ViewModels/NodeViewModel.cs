@@ -110,5 +110,30 @@ namespace JsonGraphVisualizer.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
+        private bool _isSearchMatch;
+        public bool IsSearchMatch
+        {
+            get => _isSearchMatch;
+            set
+            {
+                _isSearchMatch = value;
+                OnPropertyChanged(nameof(IsSearchMatch));
+            }
+        }
+
+        private string _searchTerm;
+        public string SearchTerm
+        {
+            get => _searchTerm;
+            set
+            {
+                if (_searchTerm != value)
+                {
+                    _searchTerm = value;
+                    OnPropertyChanged(nameof(SearchTerm));
+                }
+            }
+        }
     }
 }
