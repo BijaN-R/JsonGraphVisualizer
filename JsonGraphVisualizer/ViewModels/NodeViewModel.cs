@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using JsonGraphVisualizer.Models;
 using JsonGraphVisualizer.Controls;
+using JsonGraphVisualizer.Models;
 
 namespace JsonGraphVisualizer.ViewModels
 {
@@ -16,7 +17,6 @@ namespace JsonGraphVisualizer.ViewModels
 
         public string Title => Model.Title;
         public NodeType Type => Model.Type;
-        public Dictionary<string, object> Properties => Model.Properties;
         public double X => Model.X;
         public double Y => Model.Y;
         public double Width => Model.Width;
@@ -27,6 +27,28 @@ namespace JsonGraphVisualizer.ViewModels
         public string ExpandCollapseIcon => IsExpanded ? "−" : "+";
 
         public List<NodeViewModel> ChildrenViewModels { get; } = new List<NodeViewModel>();
+
+        private List<PropertyViewModel> _properties;
+
+        public List<PropertyViewModel> Properties
+        {
+            get
+            {
+                if (_properties == null)
+                {
+                    _properties = new List<PropertyViewModel>();
+
+                    if (Model.Properties != null)
+                    {
+                        foreach (var kvp in Model.Properties)
+                        {
+                            _properties.Add(new PropertyViewModel(kvp.Key, kvp.Value));
+                        }
+                    }
+                }
+                return _properties;
+            }
+        }
 
         public bool IsExpanded
         {
@@ -63,6 +85,7 @@ namespace JsonGraphVisualizer.ViewModels
         {
             Model = model;
             ShowFullTextCommand = new RelayCommand<object>(ShowFullText);
+            _ = Properties;
         }
 
         public void ToggleExpand()
@@ -92,9 +115,9 @@ namespace JsonGraphVisualizer.ViewModels
 
         private void ShowFullText(object parameter)
         {
-            if (parameter is KeyValuePair<string, object> kvp)
+            if (parameter is PropertyViewModel prop)
             {
-                string fullText = kvp.Value?.ToString() ?? "null";
+                string fullText = prop.Value?.ToString() ?? "null";
 
                 if (fullText.Length > 70)
                 {
@@ -111,7 +134,7 @@ namespace JsonGraphVisualizer.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private bool _isSearchMatch;
+        private bool _isSearchMatch = false;
         public bool IsSearchMatch
         {
             get => _isSearchMatch;
@@ -119,6 +142,17 @@ namespace JsonGraphVisualizer.ViewModels
             {
                 _isSearchMatch = value;
                 OnPropertyChanged(nameof(IsSearchMatch));
+            }
+        }
+
+        private bool _isHighlighted = false;
+        public bool IsHighlighted
+        {
+            get => _isHighlighted;
+            set
+            {
+                _isHighlighted = value;
+                OnPropertyChanged(nameof(IsHighlighted));
             }
         }
 
@@ -135,5 +169,11 @@ namespace JsonGraphVisualizer.ViewModels
                 }
             }
         }
+    }
+
+    class SearchMatch
+    {
+        public NodeViewModel Node { get; set; }
+        public PropertyViewModel Prop { get; set; }  // null یعنی تیتر نود
     }
 }

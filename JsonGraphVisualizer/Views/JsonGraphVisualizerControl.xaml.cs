@@ -209,7 +209,7 @@ namespace JsonGraphVisualizer.Views
         private Point _originalTranslate;
         private string _originalJsonData;
 
-        private List<NodeViewModel> _searchResults = new List<NodeViewModel>();
+        private List<SearchMatch> _searchResults = new List<SearchMatch>();
         private int _currentSearchIndex = -1;
 
         #endregion
@@ -224,8 +224,6 @@ namespace JsonGraphVisualizer.Views
             _layoutService = new LayoutService();
 
             DataContext = this;
-
-            this.Focusable = true; 
         }
 
         #endregion
@@ -285,6 +283,7 @@ namespace JsonGraphVisualizer.Views
             foreach (var node in nodes)
             {
                 var nodeVM = new NodeViewModel(node);
+                nodeVM.IsSearchMatch = false;
                 nodeVMs.Add(nodeVM);
 
                 // Edge از parent به این node
@@ -539,12 +538,12 @@ namespace JsonGraphVisualizer.Views
         private void Value_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem menuItem &&
-                menuItem.DataContext is KeyValuePair<string, object> kvp)
+                menuItem.DataContext is PropertyViewModel prop)
             {
                 var contextMenu = (ContextMenu)menuItem.Parent;
                 var textBlock = (TextBlock)contextMenu.PlacementTarget;
 
-                string valueToCopy = kvp.Value?.ToString() ?? "null";
+                string valueToCopy = prop.Value?.ToString() ?? "null";
 
                 // 🧹 پاک کردن کوتیشن‌های اضافی
                 valueToCopy = valueToCopy.Trim('"');
@@ -711,96 +710,92 @@ namespace JsonGraphVisualizer.Views
 
         #region Search_Box
         // 🔎 جستجوی بازگشتی در نودها
-        private List<NodeViewModel> FindNodesWithValue(string searchTerm)
+        private List<SearchMatch> FindNodesWithValue(string searchTerm)
         {
-            var results = new List<NodeViewModel>();
             if (string.IsNullOrWhiteSpace(searchTerm) || Nodes == null)
-                return results;
+                return new List<SearchMatch>();
 
             searchTerm = searchTerm.ToLower();
+            var candidates = Nodes.ToList();
+            var results = new List<SearchMatch>();
 
-            foreach (var node in Nodes)
+            ClearSearchMatches();
+
+            foreach (var node in candidates)
             {
-                SearchNodeRecursive(node, searchTerm, results);
-            }
+                bool titleMatched = node.Title?.ToLower().Contains(searchTerm) == true;
+                if (titleMatched)
+                {
+                    node.IsSearchMatch = true;
+                    results.Add(new SearchMatch { Node = node, Prop = null });
+                }
 
-            return results;
-        }
-
-        private void SearchNodeRecursive(NodeViewModel node, string searchTerm, List<NodeViewModel> results)
-        {
-            // جستجو در عنوان
-            if (node.Title?.ToLower().Contains(searchTerm) == true)
-            {
-                results.Add(node);
-            }
-
-            // جستجو در Properties
-            if (node.Properties != null)
-            {
                 foreach (var prop in node.Properties)
                 {
-                    string key = prop.Key?.ToLower() ?? "";
-                    string value = prop.Value?.ToString()?.ToLower() ?? "";
-
-                    if (key.Contains(searchTerm) || value.Contains(searchTerm))
+                    prop.IsSearchMatch = true;
+                    var key = (prop.Key ?? "").ToLower();
+                    var val = (prop.Value?.ToString() ?? "").ToLower();
+                    if (key.Contains(searchTerm) || val.Contains(searchTerm))
                     {
-                        if (!results.Contains(node))
-                            results.Add(node);
-                        break;
+                        results.Add(new SearchMatch { Node = node, Prop = prop });
                     }
                 }
             }
 
-            // جستجو در Children
-            if (node.ChildrenViewModels != null)
-            {
-                foreach (var child in node.ChildrenViewModels)
-                {
-                    SearchNodeRecursive(child, searchTerm, results);
-                }
-            }
+            var distinct = results
+                .GroupBy(m => new { m.Node, m.Prop })  // اگر Prop=null و مایلید یکی شود، این کلید صحیح است
+                .Select(g => g.First())
+                .ToList();
+
+            return distinct;
         }
 
-        // 🎯 انتقال به نود
-        private void NavigateToNode(NodeViewModel node)
+        private void CenterOnNode(NodeViewModel node)
         {
-            if (node == null) return;
-
-            // محاسبه مرکز Canvas
-            double canvasWidth = MainCanvas.ActualWidth;
-            double canvasHeight = MainCanvas.ActualHeight;
-            double viewportWidth = MainScrollViewer.ActualWidth;
-            double viewportHeight = MainScrollViewer.ActualHeight;
-
-            // محاسبه موقعیت مرکزی نود
-            double nodeCenterX = node.X + (node.Width / 2);
-            double nodeCenterY = node.Y + (node.Height / 2);
-
-            // محاسبه Translation
-            double targetX = (viewportWidth / 2) - (nodeCenterX * ScaleTransform.ScaleX);
-            double targetY = (viewportHeight / 2) - (nodeCenterY * ScaleTransform.ScaleY);
+            double nodeCenterX = node.X + node.Width / 2;
+            double nodeCenterY = node.Y + node.Height / 2;
+            double targetX = (MainScrollViewer.ActualWidth / 2) - (nodeCenterX * ScaleTransform.ScaleX);
+            double targetY = (MainScrollViewer.ActualHeight / 2) - (nodeCenterY * ScaleTransform.ScaleY);
 
             TranslateTransform.X = targetX;
             TranslateTransform.Y = targetY;
-
-            // هایلایت کردن
-            foreach (var n in Nodes)
-            {
-                ClearSearchHighlight(n);
-            }
-            node.IsSearchMatch = true;
         }
 
-        private void ClearSearchHighlight(NodeViewModel node)
+        private void ClearSearchMatches()
         {
-            node.IsSearchMatch = false;
-            if (node.ChildrenViewModels != null)
+            if (Nodes == null) return;
+            foreach (var node in Nodes)
             {
-                foreach (var child in node.ChildrenViewModels)
-                {
-                    ClearSearchHighlight(child);
-                }
+                node.IsSearchMatch = false;
+                foreach (var prop in node.Properties)
+                    prop.IsSearchMatch = false;
+            }
+        }
+
+        private void ClearAllHighlights()
+        {
+            if (Nodes == null) return;
+            foreach (var node in Nodes)
+            {
+                node.IsHighlighted = false;
+                foreach (var prop in node.Properties)
+                    prop.IsHighlighted = false;
+            }
+        }
+
+        // هایلایت همهٔ نتایج فعلی
+        private void HighlightAllMatches()
+        {
+            // اول تمامی‌هایلایت‌ها را پاک کن
+            ClearAllHighlights();
+
+            // سپس برای هر نتیجه، نود و پراپرتی منطبق را هایلایت کن
+            foreach (var match in _searchResults)
+            {
+                if (match.Node.IsSearchMatch)
+                    match.Node.IsHighlighted = true;
+                if (match.Prop != null)
+                    match.Prop.IsHighlighted = true;
             }
         }
 
@@ -815,29 +810,25 @@ namespace JsonGraphVisualizer.Views
                 _searchResults.Clear();
                 _currentSearchIndex = -1;
                 MatchCounterText.Text = "";
-
-                // پاک کردن هایلایت‌ها
-                if (Nodes != null)
-                {
-                    foreach (var node in Nodes)
-                    {
-                        ClearSearchHighlight(node);
-                    }
-                }
+                ClearAllHighlights();
                 return;
             }
 
+            // ۱) یافتن همهٔ مطابقت‌ها با کلیدواژه
             _searchResults = FindNodesWithValue(searchTerm);
-            _currentSearchIndex = _searchResults.Count > 0 ? 0 : -1;
+            // ۲) هایلایت همهٔ آن‌ها
+            HighlightAllMatches();
 
-            // به‌روز کردن Counter
+            // ۳) تنظیم ایندکس فعلی و مرکز کردن روی اولین
             if (_searchResults.Count > 0)
             {
+                _currentSearchIndex = 0;
                 MatchCounterText.Text = $"{_currentSearchIndex + 1}/{_searchResults.Count}";
-                NavigateToNode(_searchResults[_currentSearchIndex]);
+                CenterOnNode(_searchResults[0].Node);
             }
             else
             {
+                _currentSearchIndex = -1;
                 MatchCounterText.Text = "0/0";
             }
         }
@@ -849,7 +840,7 @@ namespace JsonGraphVisualizer.Views
 
             _currentSearchIndex = (_currentSearchIndex + 1) % _searchResults.Count;
             MatchCounterText.Text = $"{_currentSearchIndex + 1}/{_searchResults.Count}";
-            NavigateToNode(_searchResults[_currentSearchIndex]);
+            CenterOnNode(_searchResults[_currentSearchIndex].Node);
         }
 
         // ✕ پاک کردن جستجو
@@ -860,14 +851,8 @@ namespace JsonGraphVisualizer.Views
             _currentSearchIndex = -1;
             MatchCounterText.Text = "";
             IsSearchVisible = false;
-
-            if (Nodes != null)
-            {
-                foreach (var node in Nodes)
-                {
-                    ClearSearchHighlight(node);
-                }
-            }
+            ClearSearchMatches();
+            ClearAllHighlights() ;
         }
 
         // ⌨️ کیبورد

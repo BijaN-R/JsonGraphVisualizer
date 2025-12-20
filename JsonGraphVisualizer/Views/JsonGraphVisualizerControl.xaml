@@ -220,7 +220,8 @@
                                                    Margin="0,0,5,0"/>
 
                                                 <!-- Title -->
-                                                <TextBlock Grid.Column="1"
+                                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock 
                                                        Text="{Binding Title}"
                                                        FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                        FontSize="14"
@@ -228,22 +229,33 @@
                                                        TextWrapping="Wrap"
                                                        VerticalAlignment="Center"
                                                        Cursor="Hand">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Type}" Value="Object">
-                                                                    <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Type}" Value="Array">
-                                                                    <Setter Property="Foreground" Value="{Binding ArrayTitleBrush, ElementName=RootControl}"/>
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding Type}" Value="PropertyGroup">
-                                                                    <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Type}" Value="Object">
+                                                                        <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Type}" Value="Array">
+                                                                        <Setter Property="Foreground" Value="{Binding ArrayTitleBrush, ElementName=RootControl}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding Type}" Value="PropertyGroup">
+                                                                        <Setter Property="Foreground" Value="{Binding ObjectTitleBrush, ElementName=RootControl}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+
+                                                    <Border IsHitTestVisible="False" 
+                                                        CornerRadius="3"
+                                                        BorderThickness="2"
+                                                        Margin="-7, -3"
+                                                        Visibility="{Binding IsHighlighted, Converter={StaticResource BoolToVisConverter}}">
+                                                        <Border.BorderBrush>#FFBB00</Border.BorderBrush>
+                                                        <Border.Background>#33FFBB00</Border.Background>
+                                                        <!-- شفافیت زرد -->
+                                                    </Border>
+                                                </Grid>
                                             </Grid>
 
                                             <!-- Separator -->
@@ -255,55 +267,65 @@
                                             <ItemsControl ItemsSource="{Binding Properties}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Grid Margin="0,2">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="Auto"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                            </Grid.ColumnDefinitions>
+                                                        <Grid Margin="0,1">
+                                                            <Grid Margin="0,2">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="*"/>
+                                                                </Grid.ColumnDefinitions>
 
-                                                            <TextBlock Grid.Column="0"
+                                                                <TextBlock Grid.Column="0"
                                                                   Text="{Binding Key, StringFormat='{}{0}:'}"
                                                                   Foreground="{Binding KeyTextBrush, ElementName=RootControl}"
                                                                   FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                                   FontSize="11"
                                                                   Margin="0,0,5,0"/>
 
-                                                            <TextBlock Grid.Column="1"
+                                                                <TextBlock Grid.Column="1"
                                                                    Foreground="{Binding ValueTextBrush, ElementName=RootControl}"
                                                                    FontFamily="{Binding GlobalFontFamily, ElementName=RootControl}"
                                                                    FontSize="11"
                                                                    TextWrapping="Wrap">
-                                                                <TextBlock.Text>
-                                                                    <Binding Path="Value" Converter="{StaticResource TruncateTextConverter}"/>
-                                                                </TextBlock.Text>
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Style.Triggers>
-                                                                            <!-- اگر متن truncate شده، دکمه ... نمایش بده -->
-                                                                            <DataTrigger Binding="{Binding Value, Converter={StaticResource TruncateTextConverter}}" Value="{x:Null}">
-                                                                                <Setter Property="Cursor" Value="Arrow"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            
-                                                            <!-- Hyperlink برای متن های truncate شده -->
-                                                                <TextBlock.InputBindings>
-                                                                    <MouseBinding MouseAction="LeftClick" 
+                                                                    <TextBlock.Text>
+                                                                        <Binding Path="Value" Converter="{StaticResource TruncateTextConverter}"/>
+                                                                    </TextBlock.Text>
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Style.Triggers>
+                                                                                <!-- اگر متن truncate شده، دکمه ... نمایش بده -->
+                                                                                <DataTrigger Binding="{Binding Value, Converter={StaticResource TruncateTextConverter}}" Value="{x:Null}">
+                                                                                    <Setter Property="Cursor" Value="Arrow"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                
+                                                                    <!-- Hyperlink برای متن های truncate شده -->
+                                                                    <TextBlock.InputBindings>
+                                                                        <MouseBinding MouseAction="LeftClick" 
                                                                             Command="{Binding ShowFullTextCommand}"/>
-                                                                </TextBlock.InputBindings>
-                                                                <TextBlock.ContextMenu>
-                                                                    <ContextMenu Style="{StaticResource CompactContextMenu}">
-                                                                        <MenuItem Header="📋 Copy Value" 
-                                                                              Click="Value_Click"
-                                                                              Style="{StaticResource CompactMenuItem}"/>
-                                                                        <Separator Style="{StaticResource CompactSeparator}"/>
-                                                                        <MenuItem Header="🏠 Set as Root" 
-                                                                              Click="SetAsRoot_Click"
-                                                                              Style="{StaticResource CompactMenuItem}"/>
-                                                                    </ContextMenu>
-                                                                </TextBlock.ContextMenu>
-                                                            </TextBlock>
+                                                                    </TextBlock.InputBindings>
+                                                                    <TextBlock.ContextMenu>
+                                                                        <ContextMenu Style="{StaticResource CompactContextMenu}">
+                                                                            <MenuItem Header="📋 Copy Value" 
+                                                                            Click="Value_Click"
+                                                                            Style="{StaticResource CompactMenuItem}"/>
+                                                                            <Separator Style="{StaticResource CompactSeparator}"/>
+                                                                            <MenuItem Header="🏠 Set as Root" 
+                                                                            Click="SetAsRoot_Click"
+                                                                            Style="{StaticResource CompactMenuItem}"/>
+                                                                        </ContextMenu>
+                                                                    </TextBlock.ContextMenu>
+                                                                </TextBlock>
+                                                            </Grid>
+                                                            <Border IsHitTestVisible="False"
+                                                                CornerRadius="3"
+                                                                BorderThickness="2"
+                                                                Margin="-7, -3"
+                                                                Visibility="{Binding IsHighlighted, Converter={StaticResource BoolToVisConverter}}">
+                                                                <Border.BorderBrush>#FFBB00</Border.BorderBrush>
+                                                                <Border.Background>#33FFBB00</Border.Background>
+                                                            </Border>
                                                         </Grid>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
