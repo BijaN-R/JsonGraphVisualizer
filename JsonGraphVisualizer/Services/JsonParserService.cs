@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JsonGraphVisualizer.Models;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace JsonGraphVisualizer.Services
@@ -156,6 +157,66 @@ namespace JsonGraphVisualizer.Services
                 Type = type,
                 RawData = rawData
             };
+        }
+
+        public static string FixNestedJson(string jsonContent)
+        {
+            if (string.IsNullOrWhiteSpace(jsonContent))
+                return "{}";
+
+            try
+            {
+                var root = JToken.Parse(jsonContent);
+                var fixedRoot = FixNestedTokens(root);
+                return fixedRoot.ToString(Formatting.Indented);
+            }
+            catch
+            {
+                return jsonContent;
+            }
+        }
+
+        private static JToken FixNestedTokens(JToken token)
+        {
+            switch (token.Type)
+            {
+                case JTokenType.Object:
+                    var obj = (JObject)token;
+                    foreach (var property in obj.Properties())
+                    {
+                        property.Value = FixNestedTokens(property.Value);
+                    }
+                    return obj;
+
+                case JTokenType.Array:
+                    var arr = (JArray)token;
+                    for (int i = 0; i < arr.Count; i++)
+                    {
+                        arr[i] = FixNestedTokens(arr[i]);
+                    }
+                    return arr;
+
+                case JTokenType.String:
+                    var str = token.ToString().Trim();
+
+                    if ((str.StartsWith("{") && str.EndsWith("}")) ||
+                        (str.StartsWith("[") && str.EndsWith("]")))
+                    {
+                        try
+                        {
+                            var inner = JToken.Parse(str);
+                            return FixNestedTokens(inner);
+                        }
+                        catch
+                        {
+                            return token;
+                        }
+                    }
+                    return token;
+
+                default:
+                    return token;
+            }
         }
     }
 }

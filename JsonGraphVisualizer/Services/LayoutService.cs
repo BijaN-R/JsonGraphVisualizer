@@ -12,7 +12,7 @@ namespace JsonGraphVisualizer.Services
     public class LayoutService
     {
         private const double HorizontalSpacing = 100;
-        private const double VerticalSpacing = 25;
+        private const double VerticalSpacing = 100;
         private const double NodePadding = 20;
         private const double PropertyLineHeight = 18;
         private const double HeaderHeight = 40;
@@ -57,7 +57,7 @@ namespace JsonGraphVisualizer.Services
                 return;
 
             // محاسبه عرض بر اساس محتوا
-            double maxTextWidth = MeasureString(node.Title, 14, FontWeights.Bold);
+            double maxTextWidth = MeasureString(node.Title, 16, FontWeights.Bold);
 
             // بررسی عرض Properties
             if (node.Properties != null && node.Properties.Any())
@@ -65,7 +65,7 @@ namespace JsonGraphVisualizer.Services
                 foreach (var prop in node.Properties)
                 {
                     string text = $"{prop.Key}: {FormatValue(prop.Value)}";
-                    double textWidth = MeasureString(text, 11, FontWeights.Normal);
+                    double textWidth = MeasureString(text, 13, FontWeights.Normal);
                     maxTextWidth = Math.Max(maxTextWidth, textWidth);
                 }
             }

@@ -22,7 +22,7 @@ namespace JsonGraphVisualizer.Views
     {
         #region Dependency Properties
 
-        // 🎨 رنگ‌ها و ظاهر
+        // 🎨 Color & Appearance
         public static readonly DependencyProperty ComponentBackgroundProperty =
             DependencyProperty.Register("ComponentBackground", typeof(Brush), typeof(JsonGraphVisualizerControl),
                 new PropertyMetadata(new SolidColorBrush(Color.FromRgb(243, 243, 243))));
@@ -59,7 +59,7 @@ namespace JsonGraphVisualizer.Views
             DependencyProperty.Register("GlobalFontFamily", typeof(FontFamily), typeof(JsonGraphVisualizerControl),
                 new PropertyMetadata(new FontFamily("Consolas")));
 
-        // 📊 داده‌ها
+        // 📊 Data
         public static readonly DependencyProperty JsonDataProperty =
             DependencyProperty.Register("JsonData", typeof(string), typeof(JsonGraphVisualizerControl),
                 new PropertyMetadata(string.Empty, OnJsonDataChanged));
@@ -72,7 +72,7 @@ namespace JsonGraphVisualizer.Views
             DependencyProperty.Register("Edges", typeof(List<EdgeViewModel>), typeof(JsonGraphVisualizerControl),
                 new PropertyMetadata(new List<EdgeViewModel>()));
 
-        // 🔍 Zoom و Pan محدودیت‌ها
+        // 🔍 Zoom & Pan limitations
         public static readonly DependencyProperty MinZoomProperty =
             DependencyProperty.Register("MinZoom", typeof(double), typeof(JsonGraphVisualizerControl),
                 new PropertyMetadata(0.4));
@@ -143,14 +143,11 @@ namespace JsonGraphVisualizer.Views
             set => SetValue(GlobalFontFamilyProperty, value);
         }
 
-        public string JsonData
+        internal string JsonData
         {
             get => (string)GetValue(JsonDataProperty);
             set
             {
-                if (string.IsNullOrEmpty(_originalJsonData))
-                    _originalJsonData = value; 
-
                 SetValue(JsonDataProperty, value);
             }
         }
@@ -230,6 +227,15 @@ namespace JsonGraphVisualizer.Views
 
         #region JSON Processing
 
+        public string SetJsonData(string jsonData)
+        {
+            string normalizedJson = JsonParserService.FixNestedJson(jsonData);
+            _originalJsonData = normalizedJson;
+            JsonData = "";
+            JsonData = normalizedJson;
+            return normalizedJson;
+        }
+
         private static void OnJsonDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             if (d is JsonGraphVisualizerControl control && e.NewValue is string jsonString)
@@ -249,13 +255,10 @@ namespace JsonGraphVisualizer.Views
 
             try
             {
-                // 1️⃣ Parse JSON
                 var rootNodes = _parserService.ParseJson(jsonString);
 
-                // 2️⃣ محاسبه Layout
                 _layoutService.CalculateLayout(rootNodes);
 
-                // 3️⃣ ایجاد ViewModels
                 var nodeViewModels = new List<NodeViewModel>();
                 var edgeViewModels = new List<EdgeViewModel>();
 
@@ -264,7 +267,6 @@ namespace JsonGraphVisualizer.Views
                 Nodes = nodeViewModels;
                 Edges = edgeViewModels;
 
-                // 4️⃣ Reset Zoom/Pan
                 ResetViewTransform();
             }
             catch (Exception ex)
@@ -286,7 +288,7 @@ namespace JsonGraphVisualizer.Views
                 nodeVM.IsSearchMatch = false;
                 nodeVMs.Add(nodeVM);
 
-                // Edge از parent به این node
+                // Edge from parent to this node
                 if (parent != null)
                 {
                     var edge = new EdgeViewModel
@@ -298,7 +300,7 @@ namespace JsonGraphVisualizer.Views
                     parent.ChildrenViewModels.Add(nodeVM);
                 }
 
-                // Recursive برای children
+                // Recursive for children
                 if (node.Children != null && node.Children.Count > 0)
                 {
                     CreateViewModels(node.Children, nodeVMs, edgeVMs, nodeVM);
@@ -323,15 +325,15 @@ namespace JsonGraphVisualizer.Views
                 }
 
 
-                // 1. موقعیت ماوس نسبت به CANVAS
+                // 1. Mouse position in CANVAS
                 Point mousePos = e.GetPosition(MainCanvas);
 
-                // 2. scale قدیمی
+                // 2. Old scale
                 Point before = e.GetPosition(MainCanvas);
 
                 ScaleTransform.CenterX = mousePos.X;
                 ScaleTransform.CenterY = mousePos.Y;
-                // 3. scale جدید
+                // 3. New scale 
                 ScaleTransform.ScaleX *= zoomFactor;
                 ScaleTransform.ScaleY *= zoomFactor;
 
@@ -389,7 +391,7 @@ namespace JsonGraphVisualizer.Views
 
         private void ClampPan()
         {
-            // محدود کردن Pan به 500 پیکسل خارج از محدوده
+            // Limit Panning 
             double maxOffset = MaxPanOffset;
 
             TranslateTransform.X = Math.Max(-maxOffset, Math.Min(maxOffset, TranslateTransform.X));
@@ -425,16 +427,16 @@ namespace JsonGraphVisualizer.Views
             {
                 try
                 {
-                    // 🔍 پیدا کردن NodeViewModel از ContextMenu
+                    // 🔍 Finding NodeViewModel from ContextMenu
                     var contextMenu = (ContextMenu)menuItem.Parent;
                     var placementTarget = contextMenu.PlacementTarget;
 
-                    // چون ممکنه از TextBlock یا Border باشه
                     NodeViewModel nodeVM = null;
 
+                    // Because it could be TextBlock or Border
                     if (placementTarget is FrameworkElement fe)
                     {
-                        // پیدا کردن NodeViewModel از Visual Tree
+                        // Finding NodeViewModel from Visual Tree
                         nodeVM = FindAncestorNodeViewModel(fe);
                     }
 
@@ -476,7 +478,7 @@ namespace JsonGraphVisualizer.Views
                 {
                     e.Handled = true;
 
-                    // 🎯 فیلتر کردن: فقط property های بدون child
+                    // 🎯 Filter: Only no child properties
                     var filteredData = FilterPrimitiveProperties(nodeVM.Model);
 
                     var modal = new JsonModal(nodeVM.Title, filteredData)
@@ -495,20 +497,20 @@ namespace JsonGraphVisualizer.Views
 
         private object FilterPrimitiveProperties(JsonNodeModel node)
         {
-            // اگه خود node از نوع Primitive بود، کل RawData رو برگردون
+            // If the node type was Primitive return all RawData 
             if (node.Type == NodeType.Primitive)
             {
                 return node.RawData;
             }
 
-            // اگه نه، فقط property هایی که value اونا primitive هستن رو برگردون
+            // If not, only return properties with primitive value
             var result = new Dictionary<string, object>();
 
             foreach (var prop in node.Properties)
             {
                 var value = prop.Value;
 
-                // چک کنیم value یه object/array پیچیده نیست
+                // Check to be sure the value is not a complex object/array
                 if (value != null &&
                     !(value is JObject) &&
                     !(value is JArray) &&
@@ -528,7 +530,7 @@ namespace JsonGraphVisualizer.Views
 
             var type = value.GetType();
 
-            // اگه string، number، bool، null باشه → Primitive
+            // If it be string، number، bool، null → Primitive
             return !(type.IsPrimitive ||
                      type == typeof(string) ||
                      type == typeof(decimal) ||
@@ -545,7 +547,7 @@ namespace JsonGraphVisualizer.Views
 
                 string valueToCopy = prop.Value?.ToString() ?? "null";
 
-                // 🧹 پاک کردن کوتیشن‌های اضافی
+                // 🧹 Remove extra quotations
                 valueToCopy = valueToCopy.Trim('"');
 
                 string normalizedRaw = Regex.Replace(valueToCopy, @"\s*\r?\n\s*", " ").Trim();
@@ -583,7 +585,7 @@ namespace JsonGraphVisualizer.Views
             ToastHost.Background = new SolidColorBrush(GetToastColor(type));
 
             text = Truncate(text, 250);
-            // Regex: متن بین دو % را می‌گیرد
+            // Regex: It takes strings between two %
             var parts = Regex.Split(text, "(%[^%]+%)");
 
             foreach (var part in parts)
@@ -593,7 +595,7 @@ namespace JsonGraphVisualizer.Views
 
                 if (part.StartsWith("%") && part.EndsWith("%"))
                 {
-                    // حذف درصدها
+                    // remove %
                     string highlighted = part.Substring(1, part.Length - 2);
 
                     ToastText.Inlines.Add(new Run(highlighted)
@@ -634,22 +636,22 @@ namespace JsonGraphVisualizer.Views
             switch (type)
             {
                 case ToastType.Success:
-                    return Color.FromRgb(0, 110, 0); // سبز
+                    return Color.FromRgb(0, 110, 0); // Green
 
                 case ToastType.Info:
-                    return Color.FromRgb(0, 90, 160); // آبی
+                    return Color.FromRgb(0, 90, 160); // Blue
 
                 case ToastType.Warning:
-                    return Color.FromRgb(180, 100, 0); // نارنجی
+                    return Color.FromRgb(180, 100, 0); // Orange
 
                 case ToastType.Error:
-                    return Color.FromRgb(160, 30, 30); // قرمز تیره
+                    return Color.FromRgb(160, 30, 30); // Dark-Red
 
                 case ToastType.Default:
-                    return Color.FromRgb(50, 50, 50); // خاکستری
+                    return Color.FromRgb(50, 50, 50); // Gray
 
                 default:
-                    return Color.FromRgb(70, 70, 70); // حالت default خاکستری
+                    return Color.FromRgb(70, 70, 70); // Default color (Gray)
             }
         }
 
@@ -667,7 +669,7 @@ namespace JsonGraphVisualizer.Views
         {
             foreach (var edge in Edges)
             {
-                // Edge نمایش داده شود اگر هر دو node visible باشند
+                // Show the edge only if both of it's nodes are visible 
                 edge.UpdateVisibility();
             }
         }
@@ -677,7 +679,7 @@ namespace JsonGraphVisualizer.Views
         #region Public Methods
 
         /// <summary>
-        /// بازنشانی Zoom و Pan به حالت اولیه
+        /// Reset Zoom & Pan to the default settings
         /// </summary>
         public void ResetView()
         {
@@ -685,7 +687,7 @@ namespace JsonGraphVisualizer.Views
         }
 
         /// <summary>
-        /// Expand کردن تمام node ها
+        /// Expand all nodes
         /// </summary>
         public void ExpandAll()
         {
@@ -697,7 +699,7 @@ namespace JsonGraphVisualizer.Views
         }
 
         /// <summary>
-        /// Collapse کردن تمام node ها
+        /// Collapse all nodes
         /// </summary>
         public void CollapseAll()
         {
@@ -709,7 +711,7 @@ namespace JsonGraphVisualizer.Views
         }
 
         #region Search_Box
-        // 🔎 جستجوی بازگشتی در نودها
+        // 🔎 Search in nodes
         private List<SearchMatch> FindNodesWithValue(string searchTerm)
         {
             if (string.IsNullOrWhiteSpace(searchTerm) || Nodes == null)
@@ -743,7 +745,7 @@ namespace JsonGraphVisualizer.Views
             }
 
             var distinct = results
-                .GroupBy(m => new { m.Node, m.Prop })  // اگر Prop=null و مایلید یکی شود، این کلید صحیح است
+                .GroupBy(m => new { m.Node, m.Prop })  
                 .Select(g => g.First())
                 .ToList();
 
@@ -783,13 +785,13 @@ namespace JsonGraphVisualizer.Views
             }
         }
 
-        // هایلایت همهٔ نتایج فعلی
+        // Highlight all current results
         private void HighlightAllMatches()
         {
-            // اول تمامی‌هایلایت‌ها را پاک کن
+            // First remove all highlights
             ClearAllHighlights();
 
-            // سپس برای هر نتیجه، نود و پراپرتی منطبق را هایلایت کن
+            //Then highlight corresponding nodes and properties to every result
             foreach (var match in _searchResults)
             {
                 if (match.Node.IsSearchMatch)
@@ -800,7 +802,6 @@ namespace JsonGraphVisualizer.Views
         }
 
         #region Search_Events
-        // 📝 تغییر متن جستجو
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string searchTerm = SearchTextBox.Text;
@@ -814,12 +815,10 @@ namespace JsonGraphVisualizer.Views
                 return;
             }
 
-            // ۱) یافتن همهٔ مطابقت‌ها با کلیدواژه
             _searchResults = FindNodesWithValue(searchTerm);
-            // ۲) هایلایت همهٔ آن‌ها
             HighlightAllMatches();
 
-            // ۳) تنظیم ایندکس فعلی و مرکز کردن روی اولین
+            // Set current index and centeralize on the first node
             if (_searchResults.Count > 0)
             {
                 _currentSearchIndex = 0;
@@ -833,7 +832,6 @@ namespace JsonGraphVisualizer.Views
             }
         }
 
-        // ⏭️ نتیجه بعدی
         private void NextMatch_Click(object sender, RoutedEventArgs e)
         {
             if (_searchResults.Count == 0) return;
@@ -843,7 +841,6 @@ namespace JsonGraphVisualizer.Views
             CenterOnNode(_searchResults[_currentSearchIndex].Node);
         }
 
-        // ✕ پاک کردن جستجو
         private void ClearSearch_Click(object sender, RoutedEventArgs e)
         {
             SearchTextBox.Text = "";
@@ -855,7 +852,7 @@ namespace JsonGraphVisualizer.Views
             ClearAllHighlights() ;
         }
 
-        // ⌨️ کیبورد
+        // ⌨️ Keyboard
         private void UserControl_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)

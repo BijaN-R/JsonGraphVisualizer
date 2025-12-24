@@ -1,0 +1,8 @@
+﻿<Application x:Class="ShowJson.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="WinShowJson.xaml">
+    <Application.Resources>
+        <!-- می‌تونی بعداً استایل‌های مشترک اینجا بذاری -->
+    </Application.Resources>
+</Application>
