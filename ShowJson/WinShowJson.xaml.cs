@@ -1,7 +1,9 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using JsonGraphVisualizer.Views;
+using JsonVisualizer.Helpers;
 using Color = System.Windows.Media.Color;
 using MessageBox = System.Windows.MessageBox;
 
@@ -9,6 +11,8 @@ namespace ShowJson
 {
     public partial class WinShowJson : Window
     {
+        private bool _isInternalUpdate;
+
         public WinShowJson()
         {
             InitializeComponent();
@@ -20,9 +24,28 @@ namespace ShowJson
             ApplyTheme();
         }
 
+        private string GetTextFromRichTextBox()
+        {
+            var textRange = new TextRange(
+                txtJsonInput.Document.ContentStart,
+                txtJsonInput.Document.ContentEnd);
+
+            return textRange.Text.TrimEnd(); // TrimEnd برای حذف newline اضافی آخر
+        }
+        private void SetTextToRichTextBox(string text)
+        {
+            txtJsonInput.Document.Blocks.Clear();
+            txtJsonInput.Document.Blocks.Add(new Paragraph(new Run(text)));
+
+            // 🎨 اعمال Highlighting
+            _isInternalUpdate = true;
+            JsonSyntaxHighlighter.ApplyHighlighting(txtJsonInput);
+            _isInternalUpdate = false;
+        }
+
         private void BtnLoadJson_Click(object sender, RoutedEventArgs e)
         {
-            string jsonText = txtJsonInput.Text;
+            string jsonText = GetTextFromRichTextBox();
 
             if (string.IsNullOrWhiteSpace(jsonText))
             {
@@ -33,7 +56,7 @@ namespace ShowJson
 
             try
             {
-                txtJsonInput.Text = graphControl.SetJsonData(jsonText);
+                SetTextToRichTextBox(graphControl.SetJsonData(jsonText));
             }
             catch (Exception ex)
             {
@@ -139,6 +162,43 @@ namespace ShowJson
             graphControl.Background = new SolidColorBrush(Color.FromRgb(210, 210, 210));
             graphControl.NodeBackground = new SolidColorBrush(Color.FromRgb(30, 35, 40));
             graphControl.NodeBorderBrush = new SolidColorBrush(Color.FromRgb(0, 122, 204));
+        }
+
+
+        private void TxtInput_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            UpdateDocumentPageWidth();
+        }
+
+        private void UpdateDocumentPageWidth()
+        {
+            if (txtJsonInput?.Document == null || txtJsonInput.ActualWidth <= 0)
+                return;
+
+            // محاسبه عرض واقعی قابل استفاده
+            double padding = txtJsonInput.Padding.Left + txtJsonInput.Padding.Right;
+            double border = txtJsonInput.BorderThickness.Left + txtJsonInput.BorderThickness.Right;
+            double scrollBarWidth = SystemParameters.VerticalScrollBarWidth;
+
+            double availableWidth = txtJsonInput.ActualWidth - padding - border - scrollBarWidth - 5;
+
+            if (availableWidth > 50) // حداقل عرض منطقی
+            {
+                txtJsonInput.Document.PageWidth = availableWidth;
+            }
+        }
+
+
+        private void TxtInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isInternalUpdate)
+                return;
+
+            _isInternalUpdate = true;
+
+            JsonSyntaxHighlighter.ApplyHighlighting(txtJsonInput);
+
+            _isInternalUpdate = false;
         }
     }
 }

@@ -84,17 +84,27 @@
         </Grid.ColumnDefinitions>
 
         <Grid Grid.Column="0">
-            <TextBox x:Name="txtJsonInput"
-                     
-                     AcceptsReturn="True"
-                     AcceptsTab="True"
-                     TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto"
-                     HorizontalScrollBarVisibility="Auto"
-                     FontFamily="Consolas"
-                     FontSize="13"
-                     MaxLength="327670"
-                     Padding="5"/>
+            <RichTextBox x:Name="txtJsonInput"
+             Grid.Column="0"
+             AcceptsReturn="True"
+             VerticalScrollBarVisibility="Auto"
+             HorizontalScrollBarVisibility="Auto"
+             FontFamily="Consolas"
+             FontSize="14"
+             BorderThickness="0"
+             Padding="10"
+             TextChanged="TxtInput_TextChanged"
+             SizeChanged="TxtInput_SizeChanged">
+                <RichTextBox.Document>
+                    <FlowDocument PageWidth="2000">
+                        <Paragraph>
+                            <Run Text=""/>
+                        </Paragraph>
+                    </FlowDocument>
+                </RichTextBox.Document>
+            </RichTextBox>
+            
+
 
             <StackPanel Orientation="Vertical"
                         HorizontalAlignment="Right"
@@ -104,7 +114,7 @@
                 <Grid x:Name="chbGrid" Background="#e6e6e6">
                     <CheckBox x:Name="chbDarkMode"
                           Content="Dark Mode"
-                          IsChecked="False"
+                          IsChecked="True"
                           Margin="0,0,0,8"
                           Checked="ChbDarkMode_CheckedChanged"
                           Unchecked="ChbDarkMode_CheckedChanged"/>
