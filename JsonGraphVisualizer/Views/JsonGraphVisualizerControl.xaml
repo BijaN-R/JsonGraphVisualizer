@@ -185,7 +185,7 @@
                                         Visibility="{Binding Visibility}"
                                         Tag="Node"
                                         Cursor="Hand"
-                                        MouseLeftButtonDown="Node_MouseLeftButtonDown">
+                                        MouseLeftButtonUp="Node_MouseLeftButtonUp">
 
                                         <Border.Effect>
                                             <DropShadowEffect Color="Black" 

@@ -205,6 +205,8 @@ namespace JsonGraphVisualizer.Views
         private bool _isPanning;
         private Point _originalTranslate;
         private string _originalJsonData;
+        private bool _hasDragged;
+        private const double DragThreshold = 5.0;
 
         private List<SearchMatch> _searchResults = new List<SearchMatch>();
         private int _currentSearchIndex = -1;
@@ -348,19 +350,35 @@ namespace JsonGraphVisualizer.Views
 
         private void MainScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.OriginalSource is Button ||
-                e.OriginalSource is TextBlock ||
-                e.OriginalSource is Run ||
-                e.OriginalSource is Border b && b.Name == "ToastHost")
+            // اگر کلیک از دلِ یک Button (یا هر عضوی از آن) آمده، از پَنینگ صرف‌نظر کن
+            if (e.OriginalSource is DependencyObject dep &&
+                FindVisualParent<Button>(dep) != null)
+            {
+                // اجازه بده Button خودش رویداد را دریافت کند
+                return;
+            }
+
+            // یا اگر روی ToastHost کلیک شده
+            if (e.OriginalSource is Border b && b.Name == "ToastHost")
                 return;
 
-            this.Focus();
             _isPanning = true;
-                _lastMousePosition = e.GetPosition(MainScrollViewer);
-                _originalTranslate = new Point(TranslateTransform.X, TranslateTransform.Y);
-                MainScrollViewer.Cursor = Cursors.Hand;
-                MainScrollViewer.CaptureMouse();
-                e.Handled = true;
+            _hasDragged = false;
+            _lastMousePosition = e.GetPosition(MainScrollViewer);
+            _originalTranslate = new Point(TranslateTransform.X, TranslateTransform.Y);
+            MainScrollViewer.Cursor = Cursors.Hand;
+            MainScrollViewer.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private T FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            var parent = VisualTreeHelper.GetParent(child);
+            while (parent != null && !(parent is T))
+            {
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            return parent as T;
         }
 
         private void MainScrollViewer_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -369,6 +387,11 @@ namespace JsonGraphVisualizer.Views
             {
                 Point currentPosition = e.GetPosition(MainScrollViewer);
                 Vector delta = currentPosition - _lastMousePosition;
+
+                if (Math.Abs(delta.X) > DragThreshold || Math.Abs(delta.Y) > DragThreshold)
+                {
+                    _hasDragged = true;
+                }
 
                 TranslateTransform.X = _originalTranslate.X + delta.X;
                 TranslateTransform.Y = _originalTranslate.Y + delta.Y;
@@ -385,7 +408,6 @@ namespace JsonGraphVisualizer.Views
                 _isPanning = false;
                 MainScrollViewer.Cursor = Cursors.Arrow;
                 MainScrollViewer.ReleaseMouseCapture();
-                e.Handled = true;
             }
         }
 
@@ -470,28 +492,31 @@ namespace JsonGraphVisualizer.Views
             return null;
         }
 
-        private void Node_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void Node_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (Keyboard.Modifiers != ModifierKeys.Control)
+            if (!_hasDragged && Keyboard.Modifiers != ModifierKeys.Control)
             {
-                if (sender is Border border && border.DataContext is NodeViewModel nodeVM)
+                if (Keyboard.Modifiers != ModifierKeys.Control)
                 {
-                    e.Handled = true;
-
-                    // 🎯 Filter: Only no child properties
-                    var filteredData = FilterPrimitiveProperties(nodeVM.Model);
-
-                    var modal = new JsonModal(nodeVM.Title, filteredData)
+                    if (sender is Border border && border.DataContext is NodeViewModel nodeVM)
                     {
-                        KeyColor = KeyTextBrush,
-                        ValueColor = ValueTextBrush,
-                        Owner = Window.GetWindow(this)
-                    };
-                    modal.Owner = Window.GetWindow(this);
-                    modal.ShowDialog();
+                        e.Handled = true;
 
-                    e.Handled = true;
-                }
+                        // 🎯 Filter: Only no child properties
+                        var filteredData = FilterPrimitiveProperties(nodeVM.Model);
+
+                        var modal = new JsonModal(nodeVM.Title, filteredData)
+                        {
+                            KeyColor = KeyTextBrush,
+                            ValueColor = ValueTextBrush,
+                            Owner = Window.GetWindow(this)
+                        };
+                        modal.Owner = Window.GetWindow(this);
+                        modal.ShowDialog();
+
+                        //e.Handled = true;
+                    }
+                } 
             }
         }
 

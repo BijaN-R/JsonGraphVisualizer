@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using JsonGraphVisualizer.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -72,6 +73,8 @@ namespace JsonGraphVisualizer.Services
         {
             var node = CreateNode($"Object {_nodeCounter}", NodeType.Object, obj);
 
+            if (_nodeCounter == 1) node.Title = "[Root]";
+
             foreach (var prop in obj.Properties())
             {
                 var value = prop.Value;
@@ -81,7 +84,9 @@ namespace JsonGraphVisualizer.Services
                     (value.Type == JTokenType.Array && IsComplexArray((JArray)value)))
                 {
                     var childNode = Parse(value);
+                    string arrCount = Regex.Match(childNode.Title, @"Array( \[\d+\])").Groups[1].Value;
                     childNode.Title = prop.Name; // نام property به عنوان عنوان child
+                    if (!String.IsNullOrEmpty(arrCount)) childNode.Title += arrCount;
                     node.Children.Add(childNode);
                 }
                 else

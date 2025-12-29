@@ -57,7 +57,15 @@ namespace JsonGraphVisualizer.Services
                 return;
 
             // محاسبه عرض بر اساس محتوا
-            double maxTextWidth = MeasureString(node.Title, 16, FontWeights.Bold);
+            double maxTextWidth = 0;
+            if (node.Properties.Any())
+            {
+                maxTextWidth = MeasureString(node.Title, 16, FontWeights.Bold);
+            }
+            else
+            {
+                maxTextWidth = MeasureString(node.Title, 18, FontWeights.Bold);
+            }
 
             // بررسی عرض Properties
             if (node.Properties != null && node.Properties.Any())
