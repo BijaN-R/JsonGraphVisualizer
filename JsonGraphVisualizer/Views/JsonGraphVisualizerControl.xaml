@@ -200,6 +200,10 @@
                                                 <MenuItem Header="🏠 Set as Root" 
                                                   Click="SetAsRoot_Click"
                                                   Style="{StaticResource CompactMenuItem}"/>
+                                                <Separator Style="{StaticResource CompactSeparator}"/>
+                                                <MenuItem Header="📋 Copy from here" 
+                                                  Click="CopyFromHere_Click"
+                                                  Style="{StaticResource CompactMenuItem}"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
 

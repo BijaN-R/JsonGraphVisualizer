@@ -362,6 +362,8 @@ namespace JsonGraphVisualizer.Views
             if (e.OriginalSource is Border b && b.Name == "ToastHost")
                 return;
 
+            this.Focus();
+
             _isPanning = true;
             _hasDragged = false;
             _lastMousePosition = e.GetPosition(MainScrollViewer);
@@ -469,6 +471,41 @@ namespace JsonGraphVisualizer.Views
                             Formatting.Indented);
 
                         JsonData = fullJson;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"❌ Error: {ex.Message}", "Error",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+        private void CopyFromHere_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem)
+            {
+                try
+                {
+                    // 🔍 Finding NodeViewModel from ContextMenu
+                    var contextMenu = (ContextMenu)menuItem.Parent;
+                    var placementTarget = contextMenu.PlacementTarget;
+
+                    NodeViewModel nodeVM = null;
+
+                    // Because it could be TextBlock or Border
+                    if (placementTarget is FrameworkElement fe)
+                    {
+                        // Finding NodeViewModel from Visual Tree
+                        nodeVM = FindAncestorNodeViewModel(fe);
+                    }
+
+                    if (nodeVM != null)
+                    {
+                        string fullJson = JsonConvert.SerializeObject(
+                            nodeVM.Model.RawData,
+                            Formatting.Indented);
+
+                        Clipboard.SetText(fullJson);
                     }
                 }
                 catch (Exception ex)
