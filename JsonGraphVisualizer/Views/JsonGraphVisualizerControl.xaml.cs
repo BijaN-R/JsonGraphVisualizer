@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -9,10 +11,13 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using System.Windows.Media.TextFormatting;
 using JsonGraphVisualizer.Controls;
 using JsonGraphVisualizer.Models;
 using JsonGraphVisualizer.Services;
 using JsonGraphVisualizer.ViewModels;
+using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -316,36 +321,36 @@ namespace JsonGraphVisualizer.Views
 
         private void MainScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-                e.Handled = true;
+            e.Handled = true;
 
-                double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
+            double zoomFactor = e.Delta > 0 ? 1.1 : 0.9;
 
-                if (ScaleTransform.ScaleX * zoomFactor > MaxZoom ||
-                    ScaleTransform.ScaleX * zoomFactor < MinZoom)
-                {
-                    return;
-                }
-
-
-                // 1. Mouse position in CANVAS
-                Point mousePos = e.GetPosition(MainCanvas);
-
-                // 2. Old scale
-                Point before = e.GetPosition(MainCanvas);
-
-                ScaleTransform.CenterX = mousePos.X;
-                ScaleTransform.CenterY = mousePos.Y;
-                // 3. New scale 
-                ScaleTransform.ScaleX *= zoomFactor;
-                ScaleTransform.ScaleY *= zoomFactor;
-
-                Point after = e.GetPosition(MainCanvas);
-
-                TranslateTransform.X += (after.X - before.X);
-                TranslateTransform.Y += (after.Y - before.Y);
+            if (ScaleTransform.ScaleX * zoomFactor > MaxZoom ||
+                ScaleTransform.ScaleX * zoomFactor < MinZoom)
+            {
+                return;
+            }
 
 
-                ClampPan();
+            // 1. Mouse position in CANVAS
+            Point mousePos = e.GetPosition(MainCanvas);
+
+            // 2. Old scale
+            Point before = e.GetPosition(MainCanvas);
+
+            ScaleTransform.CenterX = mousePos.X;
+            ScaleTransform.CenterY = mousePos.Y;
+            // 3. New scale 
+            ScaleTransform.ScaleX *= zoomFactor;
+            ScaleTransform.ScaleY *= zoomFactor;
+
+            Point after = e.GetPosition(MainCanvas);
+
+            TranslateTransform.X += (after.X - before.X);
+            TranslateTransform.Y += (after.Y - before.Y);
+
+
+            ClampPan();
         }
 
         private void MainScrollViewer_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -553,7 +558,7 @@ namespace JsonGraphVisualizer.Views
 
                         //e.Handled = true;
                     }
-                } 
+                }
             }
         }
 
@@ -807,7 +812,7 @@ namespace JsonGraphVisualizer.Views
             }
 
             var distinct = results
-                .GroupBy(m => new { m.Node, m.Prop })  
+                .GroupBy(m => new { m.Node, m.Prop })
                 .Select(g => g.First())
                 .ToList();
 
@@ -911,7 +916,7 @@ namespace JsonGraphVisualizer.Views
             MatchCounterText.Text = "";
             IsSearchVisible = false;
             ClearSearchMatches();
-            ClearAllHighlights() ;
+            ClearAllHighlights();
         }
 
         // ⌨️ Keyboard
@@ -959,6 +964,204 @@ namespace JsonGraphVisualizer.Views
         #endregion
 
         #endregion
+        #endregion
+
+        #region Export
+        #region PNG Export
+
+        /// <summary>
+        /// رویداد کلیک گزینه Export as PNG در ContextMenu گراف.
+        /// </summary>
+        private void ExportAsPng_Click(object sender, RoutedEventArgs e)
+        {
+            var saveFileDialog = new SaveFileDialog
+            {
+                Title = "Export graph as PNG",
+                Filter = "PNG Image (*.png)|*.png",
+                DefaultExt = ".png",
+                AddExtension = true,
+                FileName = $"JsonGraph_{DateTime.Now:yyyyMMdd_HHmmss}.png",
+                OverwritePrompt = true
+            };
+
+            bool? result = saveFileDialog.ShowDialog();
+
+            if (result != true)
+                return;
+
+            try
+            {
+                /*
+                 * مقدار 1 یعنی رزولوشن پایه WPF، معادل 96 DPI.
+                 *
+                 * مقدار 2 یعنی دو برابر اندازه پایه.
+                 * مقدار 3 برای مستندات با کیفیت بالاتر مناسب است.
+                 */
+                ExportGraphToPng(
+                    filePath: saveFileDialog.FileName,
+                    scale: 3.0);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                        $"Export graph failed.\n\n{ex.Message}",
+                "Export Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// کل گراف را مستقل از ScrollViewer، Zoom و Viewport به PNG تبدیل می‌کند.
+        /// </summary>
+        /// <param name="filePath">مسیر فایل PNG خروجی</param>
+        /// <param name="scale">
+        /// ضریب رزولوشن خروجی.
+        /// 1 برابر رزولوشن پایه، 2 دو برابر و 3 سه برابر است.
+        /// </param>
+        public void ExportGraphToPng(string filePath, double scale = 3.0)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("Output file path is empty.", nameof(filePath));
+            if (scale <= 0)
+                throw new ArgumentOutOfRangeException(nameof(scale));
+            if (MainCanvas == null)
+                throw new InvalidOperationException("MainCanvas has not been initialized.");
+
+            var visibleNodes = Nodes?
+                .Where(n => n != null
+                         && n.Visibility == Visibility.Visible
+                         && IsValidCoordinate(n.X)
+                         && IsValidCoordinate(n.Y))
+                .ToList();
+
+            if (visibleNodes == null || visibleNodes.Count == 0)
+                throw new InvalidOperationException("There are no visible nodes to export.");
+
+            MainCanvas.UpdateLayout();
+
+            double minX = visibleNodes.Min(n => n.X);
+            double minY = visibleNodes.Min(n => n.Y);
+            double maxX = visibleNodes.Max(n => n.X + GetSafeNodeWidth(n));
+            double maxY = visibleNodes.Max(n => n.Y + GetSafeNodeHeight(n));
+
+            const double margin = 50.0;
+
+            double contentWidth = Math.Max(1.0, maxX - minX + margin * 2.0);
+            double contentHeight = Math.Max(1.0, maxY - minY + margin * 2.0);
+
+            // DPI نقش ضریب بزرگ‌نمایی برداری را بازی می‌کند، پس ScaleTransform لازم نیست
+            double dpi = 96.0 * scale;
+
+            long w = (long)Math.Ceiling(contentWidth * scale);
+            long h = (long)Math.Ceiling(contentHeight * scale);
+
+            const int maxDim = 30000;
+            const long maxPixel = 120_000_000L;
+
+            if (w > maxDim || h > maxDim || w * h > maxPixel)
+                throw new InvalidOperationException(
+                    $"The exported image is too large ({w} x {h}). Reduce the export scale.");
+
+            int pixelWidth = (int)w;
+            int pixelHeight = (int)h;
+
+            // وضعیت فعلی را نگه می‌داریم تا در finally برگردانده شود
+            Transform originalTransform = MainCanvas.RenderTransform;
+            bool originalClip = MainCanvas.ClipToBounds;
+            TextFormattingMode previousTextMode = TextOptions.GetTextFormattingMode(MainCanvas);
+            TextRenderingMode previousRenderMode = TextOptions.GetTextRenderingMode(MainCanvas);
+
+            try
+            {
+                MainCanvas.ClipToBounds = false;
+
+                var translate = new TranslateTransform(margin - minX, margin - minY);
+                translate.Freeze();
+                MainCanvas.RenderTransform = translate;
+
+                TextOptions.SetTextFormattingMode(MainCanvas, TextFormattingMode.Ideal);
+                TextOptions.SetTextRenderingMode(MainCanvas, TextRenderingMode.Grayscale);
+
+                MainCanvas.UpdateLayout();
+
+                var rtb = new RenderTargetBitmap(
+                    pixelWidth, pixelHeight, dpi, dpi, PixelFormats.Pbgra32);
+
+                // پس‌زمینه؛ مختصات بر حسب DIP است نه پیکسل
+                var background = new DrawingVisual();
+                using (var dc = background.RenderOpen())
+                {
+                    var brush = this.Background;
+                    brush.Freeze();
+                    dc.DrawRectangle(brush, null, new Rect(0, 0, contentWidth, contentHeight));
+                }
+
+                rtb.Render(background);
+                rtb.Render(MainCanvas);
+
+                var encoder = new PngBitmapEncoder();
+                encoder.Interlace = PngInterlaceOption.Off;
+                encoder.Frames.Add(BitmapFrame.Create(rtb));
+
+                string dir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                using (var fs = new FileStream(filePath, FileMode.Create,
+                                               FileAccess.Write, FileShare.None))
+                {
+                    encoder.Save(fs);
+                }
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{Path.GetFullPath(filePath)}\"",
+                    UseShellExecute = true
+                });
+            }
+            finally
+            {
+                MainCanvas.RenderTransform = originalTransform;
+                MainCanvas.ClipToBounds = originalClip;
+                TextOptions.SetTextFormattingMode(MainCanvas, previousTextMode);
+                TextOptions.SetTextRenderingMode(MainCanvas, previousRenderMode);
+                MainCanvas.UpdateLayout();
+            }
+        }
+
+
+        /// <summary>
+        /// عرض ایمن نود را برمی‌گرداند.
+        /// </summary>
+        private static double GetSafeNodeWidth(
+            NodeViewModel node)
+        {
+            return node.Width > 0
+                ? node.Width
+                : 250.0;
+        }
+
+        /// <summary>
+        /// ارتفاع ایمن نود را برمی‌گرداند.
+        /// </summary>
+        private static double GetSafeNodeHeight(
+            NodeViewModel node)
+        {
+            return node.Height > 0
+                ? node.Height
+                : 150.0;
+        }
+
+        private static bool IsValidCoordinate(double value)
+        {
+            return !double.IsNaN(value) &&
+                   !double.IsInfinity(value);
+        }
+
+        #endregion
+
         #endregion
     }
 }

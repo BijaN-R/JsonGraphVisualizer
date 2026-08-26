@@ -128,6 +128,12 @@
                         Height="Auto"
                         RenderTransformOrigin="0.5,0.5">
 
+                        <Canvas.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Export as PNG"
+                      Click="ExportAsPng_Click" />
+                            </ContextMenu>
+                        </Canvas.ContextMenu>
 
                         <!-- لایه Edge ها (پشت Node ها) -->
                         <ItemsControl ItemsSource="{Binding Edges}">
